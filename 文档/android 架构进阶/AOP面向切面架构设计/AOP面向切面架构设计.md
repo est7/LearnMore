@@ -101,6 +101,35 @@ java ----->calss         javac
 
 
 
+# Aspectj  能做哪些事情？
+
+
+
+- 日志
+
+- 持久化
+
+- 性能监控
+
+- 数据校验
+
+- 缓存
+
+  。。。。。
+
+
+
+# AspectJ 术语
+
+- JPoint：代码可注入的点，比如一个方法的调用处或者方法内部、“读、写”变量等。
+- Pointcut：用来描述 JPoint 注入点的一段表达式，比如：调用 Animal 类 fly 方法的地方，call(* Animal.fly(..))。
+- Advice：常见的有 Before、After、Around 等，表示代码执行前、执行后、替换目标代码，也就是在 Pointcut 何处注入代码。
+- Aspect：Pointcut 和 Advice 合在一起称作 Aspect。
+
+
+
+
+
 ```java
 //版本界限 AS-3.0.1+gradle4.4-all (需要配置r17ndk 环境)
 //As-3.2.1+gradle4.6-all (正常使用 没有警告)

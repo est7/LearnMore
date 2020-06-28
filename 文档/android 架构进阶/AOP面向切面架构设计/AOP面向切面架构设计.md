@@ -128,6 +128,65 @@ java ----->calss         javac
 
 
 
+# AspectJ 操作手册
+
+https://link.jianshu.com/?t=https://github.com/hiphonezhu/Android-Demos/blob/master/AspectJDemo/AspectJ.pdf
+
+
+
+JPoint 的分类和对应的 Pointcut 如下：
+
+
+
+![img](https:////upload-images.jianshu.io/upload_images/1787010-ad867955b97996e0.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
+
+1-1
+
+Pointcut 中的 Signature 参考：
+
+![img](https:////upload-images.jianshu.io/upload_images/1787010-826bc659e29d4063.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
+
+1-2
+
+以上的 Signature 都是由一段表达式组成，且每个关键词之间都有“空格”，下面是对关键词的解释：
+
+![img](https:////upload-images.jianshu.io/upload_images/1787010-05c4dd97edf10421.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
+
+1-3
+
+Pointcut 语法熟悉了之后，Advice 就显得很简单了，它包含以下几个：
+
+![img](https:////upload-images.jianshu.io/upload_images/1787010-2e74c3b6641d985b.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
+
+1-4
+
+![img](https:////upload-images.jianshu.io/upload_images/1787010-fe1f90f50376cbb1.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
+
+
+
+# Android Studio 中使用
+
+
+
+
+
+```java
+public class Animal {
+    private static final String TAG = "Animal";
+    public void fly() {
+        Log.e(TAG, this.toString() + "#fly");
+    }
+}
+```
+
+
+
+
+
+
+
+
+
 
 
 ```java

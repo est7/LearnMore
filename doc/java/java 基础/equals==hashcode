@@ -1,0 +1,151 @@
+# ==
+
+## == 基本数据类型
+
+ byte，short，int，long，float，double，char，boolean 
+
+比较数据 ，cpu 会对内存实际存放的数据进行比较 ，寄存器会存储结果  0 为相等  1为不相等
+
+## == 引用数据类型
+
+
+
+ 引用, 指向堆内存中一个具体的对象 
+
+ 所以用"=="判断两个引用数据类型是否相等的时候，实际上是在判断两个引用**是否指向同一个对象**。 
+
+
+
+```java
+public static void main(String[] args) {
+    String s1 = "hello";	//s1指向字符串常量池中的"hello"字符串对象
+    String s2 = "hello";	//s2也指向字符串常量池中的"hello"字符串对象
+    System.out.println(s1 == s2);   //true
+
+    String s3 = new String("hello");   //s3指向的是堆内存中的字符串对象 
+    System.out.println(s1 == s3);	//false
+}
+
+```
+
+
+
+# equals
+
+
+
+==equals()和 == 有着本质的区别， == 可以看作是对“操作系统比较数据手段”的封装，而equals()则是每个对象自带的比较方法，它是Java自定义的比较规则== 
+
+equals()和 == 的本质区别更通俗的说法是：==的比较规则是定死的，就是比较两个数据的值。
+
+而 equals() 的比较规则是不固定的，可以由用户自己定义
+
+
+
+```java
+public static void main(String[] args) {
+    String s1 = "hello";
+    String s3 = new String("hello");    
+    System.out.println(s1.equals(s3));	//true
+}
+```
+
+
+
+查看源码
+
+```java
+public boolean equals(Object anObject) {
+    if (this == anObject) {	//先比较两个字符串的引用是否相等(是否指向同一个对象), 是直接返回true
+        return true;
+    }
+    if (anObject instanceof String) {	//两个引用不等还会继续比较
+        String anotherString = (String)anObject;
+        int n = value.length;
+        if (n == anotherString.value.length) {
+            char v1[] = value;	//字符串类是用字符数组实现的, 先要拿到两个字符串的字符数组
+            char v2[] = anotherString.value;
+            int i = 0;
+            while (n-- != 0) {	//然后对两个数组逐个字符地进行比较
+                if (v1[i] != v2[i])
+                    return false;
+                i++;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+```
+
+## 为什么要有equals？
+
+== 比较两个对象的引用内存地址是否一样，但是java是面向对象编程的，所以存在一个问题，在很多情况下，需要比较两个对象的成员变量是否相等来确定是不是同一个对象，所以会产生一个问题就是单靠== 无法做到，
+1：==这个时候java 就开放出来了一个equals的方式，默认情况下不重写equals的时，依然比较的是对象 == 对象 也就是说比较的是两个内存地址==
+
+2：==重写equlas会放权给开发者，进而达到完全自主比较对象是否相等，这就是equlas存在的很大的意义==。
+
+# hashCode
+
+## hashCode 存在的意义：
+
+对于疑问？已经有了equals 问什么还要有hashcode？
+
+1：比较两个两个对象是否相等，的确equals已经完全够用了，但是效率比较慢，（这就是hashcode存在的必要了）
+
+​		a、hashcode ：三列函数产生的hacode 	
+
+​									特性：==输入相同产生的hashcode必然相等==
+
+​                                               当然对于数据量巨大的时候，不同输入也会产生相同的hashcode 这个是hashcode冲突题， 
+
+​                                                 毕竟是少数
+
+​                 由此产生一个现象就是，直接比较hascode 可以使得比较对象时间复杂度会大大降低就是1，
+
+​                这就是hascode产生的原因
+
+针对java 集合 hashmap 中就是运用了次思想，使得可以更快的查找key值下的对象，
+
+2：那么问题是，hashcode 会有不相同的输入也会产生相同的hashcode输出   hashcode冲突问题，这个怎么解决呢，那么这个时候就会用到equals 来比较，当hashcode相同的情况下会再次比较equals来确定当前还不是同一个对象，
+
+
+
+总结：这也就是为什么在重写equals的时候需要重写hashCode  也为此产生了几个定律：
+
+1、两个对象的equals相等，hashcode必然相等。
+
+2、两个对象不等，hashcode也可能相等。
+
+3、hashcode相等，对象不一定相等。
+
+4、hashcode不等，对象一定不等。
+
+
+
+![1595476356710](../../../art/equals==hashcode/1595476356710.png)
+
+
+
+![1595476371656](../../../art/equals==hashcode/1595476371656.png)
+
+![1595476385536](../../../art/equals==hashcode/1595476385536.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

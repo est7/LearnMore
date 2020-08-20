@@ -1,0 +1,197 @@
+# 一.简介
+
+join()是Thread类的一个方法，根据jdk文档的定义，join()方法的作用，是等待这个线程结束，即当前线程等待另一个调用join()方法的线程执行结束后再往下执行。通常用于在main主线程内，等待其它调用join()方法的线程执行结束再继续执行main主线程。
+
+
+
+```java
+    /**
+     * Waits for this thread to die.
+     *
+     */
+    public final void join() throws InterruptedException
+```
+
+# 二.使用示例
+
+通过下面两个例子，我们来看看使用join()方法的作用是什么。
+
+## 1.不使用join()方法的情况
+
+
+
+```java
+public class CreateThreadTest {
+    public static void main(String[] args) {
+        System.out.println("主线程执行开始");
+        Thread threadA = new Thread(new RunnableTest(), "线程A");
+        threadA.start();
+        System.out.println("主线程执行结束");
+    }
+}
+
+class RunnableTest implements Runnable{
+    @Override
+    public void run() {
+        System.out.println(Thread.currentThread().getName() + "执行开始");
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        System.out.println(Thread.currentThread().getName() + "执行结束");
+    }
+}
+```
+
+执行结果如下：
+
+
+
+```java
+主线程执行开始
+线程A执行开始
+主线程执行结束
+线程A执行结束
+```
+
+因为上述子线程执行时间相对较长，所以主线程执行结束之后子线程才执行结束。
+
+## 2.使用了join()方法的情况
+
+
+
+```java
+public class CreateThreadTest {
+    public static void main(String[] args) {
+        System.out.println("主线程执行开始");
+        Thread threadA = new Thread(new RunnableTest(), "线程A");
+        threadA.start();
+        try {
+            threadA.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        System.out.println("主线程执行结束");
+    }
+}
+
+class RunnableTest implements Runnable{
+    @Override
+    public void run() {
+        System.out.println(Thread.currentThread().getName() + "执行开始");
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        System.out.println(Thread.currentThread().getName() + "执行结束");
+    }
+}
+```
+
+执行结果如下：
+
+
+
+```java
+主线程执行开始
+线程A执行开始
+线程A执行结束
+主线程执行结束
+```
+
+对子线程threadA调用了join()方法之后，我们发现主线程会等待子线程执行结束之后才继续往下执行。
+
+# 三.join()方法的实现原理
+
+下面通过Thread类源码(JDK1.8)来深入了解一下join()方法：
+
+
+
+```java
+    public final void join() throws InterruptedException {
+        join(0);
+    }
+
+    public final synchronized void join(long millis)
+    throws InterruptedException {
+        long base = System.currentTimeMillis();
+        long now = 0;
+
+        if (millis < 0) {
+            throw new IllegalArgumentException("timeout value is negative");
+        }
+
+        if (millis == 0) {
+            while (isAlive()) {
+                wait(0);
+            }
+        } else {
+            while (isAlive()) {
+                long delay = millis - now;
+                if (delay <= 0) {
+                    break;
+                }
+                wait(delay);
+                now = System.currentTimeMillis() - base;
+            }
+        }
+    }
+```
+
+上述代码，有两个代码需要注意下，其一：
+
+
+
+```java
+public final synchronized void join(long millis) throws InterruptedException {}
+```
+
+成员方法加了synchronized说明是synchronized(this)，this是谁？this就是threadA子线程对象本身。也就是说，主线程持有了threadA这个子线程对象的锁。
+ 其二：
+
+
+
+```java
+while (isAlive()) {
+    wait(0); 
+}
+```
+
+注意，这个wait()方法是Object类中的方法，也就是说执行wait()方法之后主线
+ 程会释放threadA对象的锁，进入等待状态，直到被再次唤醒。
+ 大家都知道，有了wait()，必然有notify()，什么时候才会notify呢？在jvm源码里：
+
+
+
+```java
+//一个c++函数：
+void JavaThread::exit(bool destroy_vm, ExitType exit_type) ；
+//里面有一个贼不起眼的一行代码
+ensure_join(this);
+
+static void ensure_join(JavaThread* thread) {
+  Handle threadObj(thread, thread->threadObj());
+
+  ObjectLocker lock(threadObj, thread);
+
+  thread->clear_pending_exception();
+
+  java_lang_Thread::set_thread_status(threadObj(), java_lang_Thread::TERMINATED);
+
+  java_lang_Thread::set_thread(threadObj(), NULL);
+
+  //同志们看到了没，别的不用看，就看这一句
+  //thread就是当前线程，是啥？就是刚才例子中说的threadA线程
+  lock.notify_all(thread);
+
+  thread->clear_pending_exception();
+}
+```
+
+当子线程threadA执行结束的时候，jvm会自动唤醒阻塞在threadA对象上的线程，在我们的例子中也就是主线程。至此，threadA线程对象被notifyall了，那么主线程也就能继续跑下去了。
+
+# 四.总结
+
+在main主线程中调用threadA.join()方法，因为join() 方法是一个synchronized方法，所以**主线程会首先持有thread线程对象的锁**。接下来在join()方法里面调用wait()方法，**主线程会释放thread线程对象的锁，进入等待状态**。最后，threadA线程执行结束，JVM会调用**lock.notify_all(thread);**唤醒持有threadA这个对象锁的线程，也就是主线程，所以**主线程会继续往下执行**。

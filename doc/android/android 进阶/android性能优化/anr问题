@@ -1,0 +1,324 @@
+### ANR的分类
+
+KeyDispatch Timeout ：按键或触摸事件在特定时间内无响应。超时时间5秒。超时时间是在ActivityManagerService类中定义的。
+
+
+
+```java
+// How long we wait until we timeout on key dispatching.
+static final int KEY_DISPATCHING_TIMEOUT = 5*1000;
+```
+
+Broadcast Timeout ：BroadcastReceiver在特定时间内无法处理完成。前台广播10秒，后台广播60秒。超时时间是在ActivityManagerService类中定义的。
+
+
+
+```java
+// How long we allow a receiver to run before giving up on it.
+static final int BROADCAST_FG_TIMEOUT = 10*1000;
+static final int BROADCAST_BG_TIMEOUT = 60*1000;
+```
+
+注意：这里怎么理解**BroadcastReceiver在特定时间内无法处理完**呢？是指BroadcastReceiver的onReceive方法在10秒或者60秒内没有执行完毕吗？，我认为不是的，我测试发送一个前台广播，然后在BroadcastReceiver的onReceive方法睡眠12秒，如果我不执行任何其他操作的话，BroadcastReceiver的onReceive方法是可以正常执行结束的，并不会造成ANR。所以这点我还不明白，希望大佬指教啊！！！
+
+Service Timeout ：Service在特定的时间内无法处理完成。前台服务20秒，后台服务200秒。超时时间是在ActiveServices类中定义的。
+
+
+
+```java
+// How long we wait for a service to finish executing.
+static final int SERVICE_TIMEOUT = 20*1000;
+// How long we wait for a service to finish executing.
+static final int SERVICE_BACKGROUND_TIMEOUT = SERVICE_TIMEOUT * 10;
+```
+
+注意：Service在特定的时间内无法处理完成是指Service的生命周期函数，比如onCreate或者onStartCommand等必须在指定时间内完成。
+
+ContentProvider Timeout ：ContentProvider在特定的时间内没有完成发布。超时时间10秒。超时时间是在ActivityManagerService类中定义的。
+
+
+
+```java
+// How long we wait for an attached process to publish its content providers
+// before we decide it must be hung.
+static final int CONTENT_PROVIDER_PUBLISH_TIMEOUT = 10*1000;
+```
+
+注意：这个超时类型有待验证。我没有真正去测过。
+
+### 造成ANR的原因
+
+1. 应用在主线程上执行耗时的I/O的操作。
+2. 应用在主线程上进行长时间的计算。
+3. 主线程在对另一个进程进行同步 binder 调用，而后者需要很长时间才能返回。(如果我们知道调用远程方法需要很长时间，我们应该避免在主线程调用)
+4. 主线程处于阻塞状态，主动睡眠，或者等待其他线程上的同步方法或者同步代码块执行完毕。
+5. 主线程与其他线程之间发生死锁。
+
+上述原因都会造成主线程被长时间占用，导致无法响应用户的操作，从而造成ANR。
+
+注意：主线程做耗时操作本身是不会产生ANR的，导致ANR的根本还是应用程序无法在一定时间内响应用户的操作。因为主线程被耗时操作占用了，主线程无法对下一个操作进行响应才会ANR，没有需要响应的操作自然就不会产生ANR，或者应该这样说：主线程做耗时操作，非常容易引发ANR。
+
+举个例子
+
+比如说我发送一个广播，然后在广播接收器的onReceive方法（广播接收器的onReceive方法默认在主线程执行）里面睡眠一段时间，如果这个时候主线程没有任何操作了，那么广播接收器可以正常执行完毕。不会造成ANR。如果我在发送广播之后然后点击多次返回按键，这个时候因为主线程睡眠了，无法响应返回操作，就会造成ANR。
+
+![img](https:////upload-images.jianshu.io/upload_images/3611193-54937675af5e7eb3.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/244/format/webp)
+
+anr_dialog.jpg
+
+广播接收器类
+
+
+
+```java
+public class MyReceiver extends BroadcastReceiver {
+
+    private static final String TAG = "MyReceiver";
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        //这个方法运行在主线程中的，处理具体的逻辑
+        Log.d(TAG, "onReceive: this is " + "in thread " + Thread.currentThread().getName());
+        try {
+            Thread.sleep(12000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        Toast.makeText(context.getApplicationContext(), "MyReceiver onReceive", Toast.LENGTH_SHORT).show();
+        // abortBroadcast();
+    }
+}
+```
+
+MainActivity类部分代码
+
+
+
+```java
+public class MainActivity extends AppCompatActivity {
+
+    private IntentFilter intentFilter;
+    private MyReceiver receiver;
+   
+    public static final String ACTION_FIRST = "com.brotherd.broadcastdemo.BROADCAST_FIRST";
+   
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        /*
+          注册广播
+         */
+        intentFilter = new IntentFilter(ACTION_FIRST);
+        receiver = new MyReceiver();
+        registerReceiver(receiver, intentFilter);
+    }
+
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.btnSendGlobalBroadcast:
+                sendGlobalBroadcast();
+                break;
+            default:
+                break;
+        }
+    }
+
+    public void sendGlobalBroadcast() {
+        Intent intent = new Intent();
+        //设置前台广播的标志位
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        intent.setAction(ACTION_FIRST);
+        sendBroadcast(intent);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(receiver);
+    }
+}
+```
+
+发生ANR的时候，可以在Logcat中观察到的日志
+
+
+
+```rust
+ANR in com.brotherd.broadcastdemo (com.brotherd.broadcastdemo/.MainActivity)
+    PID: 6317
+    Reason: Input dispatching timed out (Waiting to send key event because the focused window has not finished processing all of the input events that were previously delivered to it.  Outbound queue length: 0.  Wait queue length: 2.)
+    Load: 38.14 / 37.82 / 37.45
+    CPU usage from 45678ms to 0ms ago (2020-02-27 08:39:06.256 to 2020-02-27 08:39:51.933):
+      15% 1265/system_server: 12% user + 3.5% kernel / faults: 6531 minor 16 major
+      13% 23112/com.android.systemui: 9.7% user + 3.5% kernel / faults: 6033 minor 103 major
+      4.7% 578/surfaceflinger: 2.6% user + 2% kernel / faults: 469 minor 2 major
+      4.4% 673/hwpged: 0% user + 4.3% kernel / faults: 29 minor
+      2.3% 549/android.hardware.graphics.composer@2.2-service: 1.1% user + 1.1% kernel / faults: 149 minor
+      0.1% 2246/com.huawei.android.pushagent: 0% user + 0% kernel / faults: 2583 minor 22 major
+      1.5% 461/logd: 0.8% user + 0.6% kernel / faults: 52 minor
+      1.5% 2077/com.huawei.powergenie: 0.7% user + 0.8% kernel / faults: 843 minor 2 major
+      0.5% 17384/com.android.settings: 0.4% user + 0.1% kernel / faults: 5419 minor 73 major
+      1.3% 259/mmc-cmdqd/0: 0% user + 1.3% kernel
+      1% 3888/kworker/u16:0: 0% user + 1% kernel / faults: 1 minor
+      0.9% 18949/android.process.media: 0.5% user + 0.3% kernel / faults: 1408 minor 8 major
+      0.8% 148/kswapd0: 0% user + 0.8% kernel
+      0.5% 657/dubaid: 0.3% user + 0.2% kernel / faults: 139 minor
+      0.5% 2105/com.huawei.android.launcher: 0.4% user + 0.1% kernel / faults: 159 minor 1 major
+      0.5% 2366/com.huawei.systemmanager:service: 0.3% user + 0.1% kernel / faults: 374 minor
+      0.5% 922/hisi_frw/0: 0% user + 0.5% kernel
+      0.4% 3951/kworker/u16:8: 0% user + 0.4% kernel
+      0.4% 27040/com.huawei.appmarket: 0.3% user + 0.1% kernel / faults: 350 minor 2 major
+      0.4% 238/kworker/0:1H: 0% user + 0.4% kernel
+      0.4% 2028/com.huawei.hiview: 0.1% user + 0.2% kernel / faults: 88 minor
+      0.3% 577/lmkd: 0% user + 0.3% kernel
+      0.3% 677/vendor.huawei.hardware.sensors@1.0-service: 0% user + 0.3% kernel / faults: 19 minor
+      0.3% 3715/kworker/u16:1: 0% user + 0.3% kernel
+      0.3% 29718/com.huawei.hidisk: 0.2% user + 0.1% kernel / faults: 404 minor 1 major
+      0.1% 527/zygote64: 0% user + 0.1% kernel / faults: 541 minor
+      0.3% 3954/kworker/u16:10: 0% user + 0.3% kernel
+      0.3% 581/powerlogd: 0.2% user + 0.1% kernel / faults: 25 minor
+      0.3% 3952/kworker/u16:9: 0% user + 0.3% kernel
+      0% 23351/com.huawei.hwid: 0% user + 0% kernel / faults: 854 minor 10 major
+      0.1% 3945/kworker/u16:6: 0% user + 0.1% kernel
+      0.2% 24447/kworker/u17:0: 0% user + 0.2% kernel
+      0.2% 548/android.hardware.graphics.allocator@2.0-service: 0% user + 0.2% kernel / faults: 47 minor
+      0.2% 2042/com.huawei.systemserver: 0.1% user + 0.1% kernel / faults: 95 minor
+      0.2% 426/oeminfo_nvm_server: 0% user + 0.1% kernel / faults: 79 minor 205 major
+      0.2% 4187/kworker/u17:1: 0% user + 0.2% kernel
+      0.2% 462/servicemanager: 0% user + 0.1% kernel / faults: 20 minor
+      0.2% 3633/kworker/u16:2: 0% user + 0.2% kernel
+      0.2% 5290/com.huawei.health:DaemonService: 0.1% user + 0% kernel / faults: 77 minor
+      0.1% 7/rcu_preempt: 0% user + 0.1% kernel
+      0.1% 93/sys_heap: 0% user + 0.1% kernel
+      0.1% 949/hisi_hcc: 0% user + 0.1% kernel
+      0.1% 637/hisecd: 0% user + 0.1% kernel / faults: 66 minor
+      0.1% 2097/com.android.phone: 0% user + 0.1% kernel / faults: 97 minor
+      0.1% 3441/kworker/u16:5: 0% user + 0.1% kernel
+      0.1% 526/netd: 0% user + 0.1% kernel / faults: 142 minor 2 major
+      0.1% 2063/com.huawei.HwOPServer: 0% user + 0% kernel / faults: 168 minor
+      0.1% 1//init: 0% user + 0% kernel / faults: 263 minor 5 major
+      0% 465/vendor.huawei.hardware.hwfactoryinterface@1.1-service: 0% user + 0% kernel / faults: 113 minor 5 major
+      0.1% 3944/kworker/u16:4: 0% user + 0.1% kernel
+      0.1% 655/displayengineserver: 0% user + 0% kernel / faults: 21 minor
+      0.1% 918/oal_gpio_rx_dat: 0% user + 0.1% kernel
+      0.1% 3955/com.eg.android.AlipayGphone:push: 0% user + 0% kernel / faults: 132 minor
+      0.1% 26941/com.huawe
+2020-02-27 08:39:53.753 1265-1285/? E/ActivityManager: CPU usage from 51ms to 493ms later (2020-02-27 08:39:51.984 to 2020-02-27 08:39:52.426) with 99% awake:
+      48% 1265/system_server: 10% user + 37% kernel
+        45% 1285/ActivityManager: 8% user + 37% kernel
+      4.9% 578/surfaceflinger: 4.9% user + 0% kernel / faults: 5 minor
+        2.4% 578/surfaceflinger: 2.4% user + 0% kernel
+      3.1% 3952/kworker/u16:9: 0% user + 3.1% kernel
+      3.7% 23112/com.android.systemui: 3.7% user + 0% kernel
+    9.7% TOTAL: 5.2% user + 4.4% kernel
+```
+
+在上面的日志中，我们先看前几行，CPU使用相关的信息我们暂时不关注。
+
+
+
+```cpp
+ANR in com.brotherd.broadcastdemo (com.brotherd.broadcastdemo/.MainActivity)
+PID: 6317
+Reason: Input dispatching timed out (Waiting to send key event because the focused window has not finished processing all of the input events that were previously delivered to it.  Outbound queue length: 0.  Wait queue length: 2.)
+```
+
+我们可以看到第一行是发生ANR所在的包名和类。第二行是进程ID`PID: 6317`。第三行是发生ANR的原因，输入事件超时，在这个例子中就是无法响应我们点击BACK按钮事件。
+
+那么我们接下来就要查找是什么原因造成了输入事件超时。
+
+### 使用bugreport命令
+
+使用bugreport命令，需要在开发者选项里面启用**提交错误报告**。（我的测试机里有互动式报告和完整报告两个选项，我选择的是互动式报告）。
+
+在命令行输入`adb bugreport`会生成如下所示的一个zip文件。
+
+
+
+```kotlin
+✗ adb bugreport 
+/data/user_de/0/com.android.shell/files/bugreports/bugreport...2-46.zip: 1 file pulled. 30.9 MB/s (3573762 bytes in 0.110s)
+```
+
+默认情况下，会在当前目录下生成zip文件，在Android Studio自带的Device File Explorer的bugreports目录下也可以看到。如果看不到的话，可以拔掉手机然后重新连接一下。如下图所示
+
+
+
+![img](https:////upload-images.jianshu.io/upload_images/3611193-9d3d27829cf6f8c8.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
+
+bugreport_position.jpg
+
+我们使用其他解压缩的工具打开zip文件，然后可以在`FS/data/anr/`目录下看到anr的日志。
+ 
+
+![img](https:////upload-images.jianshu.io/upload_images/3611193-e39fde40a565d932.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/716/format/webp)
+
+anr_info.jpg
+
+
+
+
+
+```css
+bugreport-LLD-AL20-HONORLLD-AL20-2020-02-27-08-42-46.txt
+```
+
+如果LogCat中关于anr的信息不见了，不用慌，我们可以在这个txt文件中看到和Logcat中类似的anr信息，因为这个文件比较长，可以搜索`ANR in`关键词。
+
+我们点击打开最新的anr日志，anr_2020-02-27-08-39-52-472，我们可以看到有下面一段信息。
+
+![img](https:////upload-images.jianshu.io/upload_images/3611193-36a45a4dac8f99e6.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/1024/format/webp)
+
+anr_root_cause.jpg
+
+在上面的信息中，有这样一行
+
+
+
+```css
+at com.brotherd.broadcastdemo.MyReceiver.onReceive(MyReceiver.java:23)
+```
+
+这就是造成ANR的根本原因。在MyReceiver类的onReceive方法中调用了Thread的sleep方法导致主线程阻塞，造成ANR。
+
+然后我们看一些字段的信息。
+
+
+
+```cpp
+"main" prio=5 tid=1 Sleeping
+  | group="main" sCount=1 dsCount=0 flags=1 obj=0x7682ab30 self=0x7bd3815c00
+  | sysTid=6317 nice=-10 cgrp=default sched=0/0 handle=0x7c59fc8548
+  | state=S schedstat=( 1009468742 32888019 224 ) utm=91 stm=9 core=4 HZ=100
+  | stack=0x7ff27e1000-0x7ff27e3000 stackSize=8MB
+  | held mutexes=
+```
+
+线程名：main
+ 线程优先级：prio=5
+ 线程ID： tid=1
+ 线程状态：Sleeping
+ 线程组名称：group="main"
+ 线程被挂起的次数：sCount=1
+ 线程被调试器挂起的次数：dsCount=0
+ 线程的java的对象地址：obj= 0x7682ab30
+ 线程本身的Native对象地址：self=0x7bd3815c00
+
+线程调度信息：
+ Linux系统中内核线程ID: sysTid=6317与主线程的进程号相同
+ 线程调度优先级：nice=-10
+ 线程调度组：cgrp=default
+ 线程调度策略和优先级：sched=0/0
+ 线程处理函数地址：handle= 0x7c59fc8548
+
+线程的上下文信息：
+ 线程调度状态：state=S
+ 线程在CPU中的执行时间、线程等待时间、线程执行的时间片长度：schedstat=(1009468742 32888019 224)
+ 线程在用户态中的调度时间值：utm=91
+ 线程在内核态中的调度时间值：stm=9
+ 最后执行这个线程的CPU核序号：core=4
+
+线程的堆栈信息：
+ 堆栈地址和大小：stack=0x7ff27e1000-0x7ff27e3000 stackSize=8MB

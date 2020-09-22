@@ -1,0 +1,554 @@
+### 一、初识布局优化
+
+通过[《Android性能优化（一）之启动加速35%》](https://gold.xitu.io/post/5874bff0128fe1006b443fa0)我们获得了闪电般的App启动速度，那么在应用启动完毕之后，UI布局也会对App的性能产生比较大的影响，如果布局写得糟糕，显而易见App的表现不可能流畅。
+
+那么本文我同样基于实际案例，针对应用的布局进行优化进而提升App性能。
+
+### 二、60fps VS 16ms
+
+> 根据Google官方出品的[Android性能优化典范](https://www.youtube.com/watch?v=CaMTIgxCSqU&index=62&list=PLWz5rJ2EKKc9CBxr3BVjPTPoDPLdPIFCE)，**60帧每秒是目前最合适的图像显示速度，事实上绝大多数的Android设备也是按照每秒60帧来刷新的。为了让屏幕的刷新帧率达到60fps，我们需要确保在时间16ms（1000/60Hz）内完成单次刷新的操作（包括measure、layout以及draw）**，这也是Android系统每隔16ms就会发出一次VSYNC信号触发对UI进行渲染的原因。
+
+如果整个过程在16ms内顺利完成则可以展示出流畅的画面；然而**由于任何原因导致接收到VSYNC信号的时候无法完成本次刷新操作，就会产生掉帧的现象，刷新帧率自然也就跟着下降(假定刷新帧率由正常的60fps降到30fps，用户就会明显感知到卡顿**)。
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/e5231166ef0a5089b0ea0f3d52524be6)Drop Frame Occur
+
+
+
+#### **作为开发人员，我们的目标只有一个：保证稳定的帧率来避免卡顿。**
+
+### 三、Avoid Overdraw
+
+> **理论上一个像素每次只绘制一次是最优的，但是由于重叠的布局导致一些像素会被多次绘制，Overdraw由此产生。**
+
+我们可以通过调试工具来检测Overdraw：设置——开发者选项——调试GPU过度绘制——显示过度绘制区域。
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/bf8ff58e81a244bbdad1fadf5dfe4e98)overdraw
+
+
+
+> 原色 – 没有过度绘制 – 这部分的像素点只在屏幕上绘制了一次。
+> 蓝色 – 1次过度绘制– 这部分的像素点只在屏幕上绘制了两次。
+> 绿色 – 2次过度绘制 – 这部分的像素点只在屏幕上绘制了三次。
+> 粉色 – 3次过度绘制 – 这部分的像素点只在屏幕上绘制了四次。
+> 红色 – 4次过度绘制 – 这部分的像素点只在屏幕上绘制了五次。
+
+**在实际项目中，一般认为蓝色即是可以接受的颜色。**
+
+我们来看一个简单却隐藏了很多问题的界面，App的设置界面。在没有优化之前打开Overdraw调试，可以看到界面大多数是严重的红色：见下图。
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/4d0b655f1b02f27bad1af6f7646d1226)设置界面初始
+
+
+
+贴出这个布局的代码
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F1F0F0"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@color/white"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:id="@+id/update_phone"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@color/white"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:background="@color/white"
+                android:text="修改手机号"
+                android:textColor="#FF555555"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:id="@+id/update_phone_iv"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/arrow_right" />
+
+            <ImageView
+                android:id="@+id/update_phone_dot"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginRight="10dp"
+                android:layout_toLeftOf="@id/update_phone_iv"
+                android:src="@drawable/message_logo_red" />
+        </RelativeLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:layout_marginLeft="10dp"
+            android:background="#FFDDDDDD" />
+
+        <RelativeLayout
+            android:id="@+id/setting_lv_forgetPassword"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@color/white"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:background="@color/white"
+                android:text="找回密码"
+                android:textColor="#FF555555"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/arrow_right" />
+        </RelativeLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@color/white"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:id="@+id/privacy_setting"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@color/white"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:background="@color/white"
+                android:text="隐私设置"
+                android:textColor="#FF555555"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:id="@+id/privacy_setting_iv"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/arrow_right" />
+
+            <ImageView
+                android:id="@+id/privacy_setting_dot"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginRight="10dp"
+                android:layout_toLeftOf="@id/privacy_setting_iv"
+                android:src="@drawable/message_logo_red" />
+        </RelativeLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:layout_marginLeft="10dp"
+            android:background="#FFDDDDDD" />
+
+        <RelativeLayout
+            android:id="@+id/setting_lv_messageSetting"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@color/white"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:background="@color/white"
+                android:text="@string/accountSetting_messageSetting"
+                android:textColor="#FF555555"
+                android:textSize="14sp" />
+
+            <CheckBox
+                android:id="@+id/setting_checkbox_c_messageSetting"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:checked="true" />
+        </RelativeLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@color/white"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:id="@+id/setting_lv_feedback_m"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@color/white"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:background="@color/white"
+                android:text="@string/accountSetting_feedback"
+                android:textColor="#FF555555"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/arrow_right" />
+        </RelativeLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:layout_marginLeft="10dp"
+            android:background="#FFDDDDDD" />
+
+        <RelativeLayout
+            android:id="@+id/setting_lv_score"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@color/white"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:background="@color/white"
+                android:text="@string/accountSetting_score"
+                android:textColor="#FF555555"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/arrow_right" />
+        </RelativeLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:layout_marginLeft="10dp"
+            android:background="#FFDDDDDD" />
+
+        <RelativeLayout
+            android:id="@+id/setting_lv_aboutus"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@color/white"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:background="@color/white"
+                android:text="@string/about_us"
+                android:textColor="#FF555555"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/arrow_right" />
+        </RelativeLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@color/white"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:id="@+id/setting_lv_changeStatus"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@color/white"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:background="@color/white"
+                android:text="我要招人"
+                android:textColor="#FF555555"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/arrow_right" />
+        </RelativeLayout>
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/setting_btn_exitLogin"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="30dp"
+        android:background="@color/white"
+        android:gravity="center"
+        android:text="@string/me_exitbtn"
+        android:textColor="#FFFF5A5A"
+        android:textSize="16sp" />
+
+</LinearLayout>复制代码
+```
+
+**分析布局可知：多层布局重复设置了背景色导致Overdraw。**
+那么我们结合产品的需求(任何不结合具体场景优化都是耍流氓):
+
+- 去掉每行RelativeLayout的背景色；
+- 去掉每行TextView的背景色；
+
+**备注：一个容易忽略的点是我们的Activity使用的[Theme](https://android.googlesource.com/platform/frameworks/base/+/android-5.0.0_r2/core/res/res/values/themes.xml)可能会默认的加上背景色，不需要的情况下可以去掉。**
+
+去掉背景色之后再看一下Overdraw；
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/3e91288ac844fd434f6b38a548784716)设置界面优化后
+
+
+
+对比一下优化后的布局的颜色，可以看出Overdraw降到了可以接受的程度。
+
+**备注：有些过度绘制都是不可避免的，需要结合具体的布局场景具体分析。**
+
+### 四、减少嵌套层次及控件个数
+
+- **Android的布局文件的加载是LayoutInflater利用pull解析方式来解析，然后根据节点名通过反射的方式创建出View对象实例；**
+- **同时嵌套子View的位置受父View的影响，类如RelativeLayout、LinearLayout等经常需要measure两次才能完成，而嵌套、相互嵌套、深层嵌套等的发生会使measure次数呈指数级增长，所费时间呈线性增长；**
+
+**由此得到结论：那么随着控件数量越多、布局嵌套层次越深，展开布局花费的时间几乎是线性增长，性能也就越差。**
+
+幸运的是，我们有Hierarchy Viewer这个方便可视化的工具，可以得到：**树形结构总览、布局view、每一个View（包含子View）绘制所花费的时间及View总个数**。
+
+**备注： Hierarchy Viewer不能连接真机的问题可以通过ViewServer这个库解决；**
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/28074b2c5cb7472601ac5c62561aa023)设置界面初始状态
+
+
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/feb1f27e808a6d0cf124cc1202981e8f)设置界面初始状态View个数及绘制时间
+
+
+
+使用Hierarchy Viewer来看查看一下设置界面，可以从下图中得到设置界面的一些数据及存在的问题：
+
+- **嵌套共计7层（仅setContentView设置的布局），布局嵌套过深；**
+- **measure时间1.569ms，layout时间0.120ms，draw时间16.128ms，合计共计耗时17.871ms；**
+- **共绘制85个View，5个多余定位，以及若干个无用布局。**
+
+**优化方案：**
+
+- 将之前使用RelativeLayout来做的可以替换的行换为TextView；
+- 去掉之前多余的无用布局；
+
+现在我们再使用Hierarchy Viewer来检测一下：
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/384e3f4f235caca5a74c97dcc6881ada)优化之后的布局层次
+
+
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/192fa85aead1a809be50f57145b644aa)优化之后的View个数及绘制时间
+
+
+
+**优化后：**
+**1. 控件数量从85个减少到26个，减少69%；**
+**2. 绘制时间从17.8ms减少到14.756ms，降低17%；**
+
+总结：
+**1. 同样的UI效果可以使用不同的布局来完成，我们需要考虑使用少的嵌套层次以及控件个数来完成，例如设置界面的普通一行，可以像之前一样使用RelativeLayout嵌套TextView以及ImageView来实现，但是明显只使用TextView来做：嵌套层次、控件个数都更少。**
+**2. 优化过程中使用低端手机更易发现瓶颈；**
+
+### 五、Profiling GPU Rendering
+
+根据[Android性能优化典范](https://www.youtube.com/watch?v=we6poP0kw6E&index=64&list=PLWz5rJ2EKKc9CBxr3BVjPTPoDPLdPIFCE)，打开设备的GPU配置渲染工具——》在屏幕上显示为条形图，可以协助我们定位UI渲染问题。
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/af112a8762cec195cf2d40df770e0464)GPU呈现模式分析
+
+
+
+从Android M版本开始，GPU Profiling工具把渲染操作拆解成如下8个详细的步骤进行显示。
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/3327d0618ded9ecf441548c12819bf7e)渲染八步骤
+
+
+
+> 1. Swap Buffers：表示处理任务的时间，也可以说是CPU等待GPU完成任务的时间，线条越高，表示GPU做的事情越多；
+> 2. Command Issue：表示执行任务的时间，这部分主要是Android进行2D渲染显示列表的时间，为了将内容绘制到屏幕上，Android需要使用Open GL ES的API接口来绘制显示列表，红色线条越高表示需要绘制的视图更多；
+> 3. Sync & Upload：表示的是准备当前界面上有待绘制的图片所耗费的时间，为了减少该段区域的执行时间，我们可以减少屏幕上的图片数量或者是缩小图片的大小；
+> 4. Draw：表示测量和绘制视图列表所需要的时间，蓝色线条越高表示每一帧需要更新很多视图，或者View的onDraw方法中做了耗时操作；
+> 5. Measure/Layout：表示布局的onMeasure与onLayout所花费的时间，一旦时间过长，就需要仔细检查自己的布局是不是存在严重的性能问题；
+> 6. Animation：表示计算执行动画所需要花费的时间，包含的动画有ObjectAnimator，ViewPropertyAnimator，Transition等等。一旦这里的执行时间过长，就需要检查是不是使用了非官方的动画工具或者是检查动画执行的过程中是不是触发了读写操作等等；
+> 7. Input Handling：表示系统处理输入事件所耗费的时间，粗略等于对事件处理方法所执行的时间。一旦执行时间过长，意味着在处理用户的输入事件的地方执行了复杂的操作；
+> 8. Misc Time/Vsync Delay：表示在主线程执行了太多的任务，导致UI渲染跟不上vSync的信号而出现掉帧的情况；出现该线条的时候，可以在Log中看到这样的日志：
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/e12aea48b89572a35de339652db8b827)
+
+
+
+**备注：GPU配置渲染工具虽然可以定位出问题发生在某个步骤，但是并不能定位到具体的某一行；当我们定位到某个步骤之后可以使用工具TraceView进行更加详细的定位。TraceView的使用可以参照[《Android性能优化（一）之启动加速35%》](https://gold.xitu.io/post/5874bff0128fe1006b443fa0)**。
+
+### 六、Use Tags
+
+#### merge标签
+
+merge可以用来合并布局，减少布局的层级。merge多用于替换顶层FrameLayout或者include布局时,用于消除因为引用布局导致的多余嵌套。
+例如：需要显示一个Button，布局如下；
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Merge标签演示" />
+</LinearLayout>复制代码
+```
+
+我们通过UiAutoMatorViewer（无需root，相比Hierarchy Viewer只能查看布局层次，不能得到绘制时间）看一下布局的层次
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/b1227665a7cabcb65b06a0383a75e0d1)顶级视图下多了LinearLayout
+
+
+
+我们使用Merge标签对代码进行修改；
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Merge标签演示" />
+</merge>复制代码
+```
+
+再看下布局的层次：
+
+
+
+![img](../../../../art/Android%20%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89%E4%B9%8B%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96%E9%9D%A2/ed81d166b36b0cf6fe5d21ed2a77122c)使用Merge之后少了LinearLayout嵌套
+
+
+
+可以看到使用Merge标签进行优化之后布局嵌套就少了一层，Button作为父视图第三层FrameLayout的直接子视图。
+
+**注意：merge标签常用于减少布局嵌套层次，但是只能用于根布局。**
+
+#### ViewStub标签
+
+推迟创建对象、延迟初始化，不仅可以提高性能，也可以节省内存（初始化对象不被创建）。Android定义了ViewStub类，ViewStub是轻量级且不可见的视图，它没有大小，没有绘制功能，也不参与measure和layout，资源消耗非常低。
+1、
+
+```
+    <ViewStub
+        android:id="@+id/mask"
+        android:layout="@layout/b_me_mask"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />复制代码
+ViewStub viewStub = (ViewStub)view.findViewById(R.id.mask);
+viewStub.inflate();复制代码
+```
+
+App里常见的视图如蒙层、小红点，以及网络错误、没有数据等公共视图，使用频率并不高，如果每一次都参与绘制其实是浪费资源的，都可以借助ViewStub标签进行延迟初始化，仅当使用时才去初始化。
+
+#### include标签
+
+include标签和布局性能关系不大，主要用于布局重用，一般和merge标签配合使用，因和本文主题关联不大，此处不展开讨论。
+
+### 七、其它
+
+1. 自定义控件时，注意在onDraw不能进行复杂运算；以及对待三方UI库选择高性能；
+2. 内存对布局的影响：如同Misc Time/Vsync Delay步骤产生的影响，在之后内存优化的篇章详细讲。
+
+### 八、总结
+
+#### 布局优化的通用套路
+
+1. 调试GPU过度绘制，将Overdraw降低到合理范围内；
+2. 减少嵌套层次及控件个数，保持view的树形结构尽量扁平（使用Hierarchy Viewer可以方便的查看），同时移除所有不需要渲染的view；
+3. 使用GPU配置渲染工具，定位出问题发生在具体哪个步骤，使用TraceView精准定位代码；
+4. 使用标签，Merge减少嵌套层次、ViewStub延迟初始化。
+
+经过这几步的优化之后，一般就不会再有布局的性能问题，同时还是要强调：优化是一个长期的工作，同时也必须结合具体场景：有取有舍

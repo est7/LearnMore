@@ -51,7 +51,7 @@
 
 
 
-```bash
+```groovy
 compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.16'
 ```
 
@@ -59,7 +59,7 @@ kotlinx-coroutines还提供了下面的模块：
 
 
 
-```csharp
+```groovy
 compile group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-jdk8', version: '0.16'
 compile group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-nio', version: '0.16'
 compile group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-reactive', version: '0.16'

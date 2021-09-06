@@ -1,6 +1,38 @@
 1：ThreadLocal  提供线程的局部变量
 
-明确  使用ThreadLocal 就是 给当前线程  用当前创建的threadLocal对象为Key 保存想要的Value数据，方便存取
+使用：
+
+1：在线程中创建ThreadLocal 泛型声明要存储的变量类型
+
+2：threaLocal .set 设置存储数据
+
+3：注意一个线程可以创建多个ThreadLocal
+
+存储数据结构为
+
+Thread
+
+​	|---ThreadLoacMap(key = 当前ThreadLocal的hasCode ==>)
+
+​		|--Entry[] table
+
+​			|--Entry {
+
+​							key----当前threadlocal 对象的hascode
+
+​                             value----当前存入泛型
+
+​						}
+
+原理：
+
+1：在ThreadLocal第一个set数据时，会给当前线程的 ThreadLocalMap 变量创建对应的ThreadLoaclMap对象
+
+2：ThreadLocalMap 会使用当前 的ThreadLocal 为Key ,存储对象为Value 进行存储
+
+
+
+ 
 
 ThreadLocal 在不使用的时候记得remove掉
 

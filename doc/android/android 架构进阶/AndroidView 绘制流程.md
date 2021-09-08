@@ -4,7 +4,7 @@
 
  
 
-![img](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190528103310149-1836591885.png)
+![img](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190528103310149-1836591885.png)
 
  
 
@@ -24,13 +24,13 @@
 
 ​    在介绍View绘制流程之前，咱们先简单介绍一下Android视图层次结构以及DecorView，因为View的绘制流程的入口和DecorView有着密切的联系。
 
- ![img](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190518164042396-2093768305.png)
+ ![img](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190518164042396-2093768305.png)
 
 ​    咱们平时看到的视图，其实存在如上的嵌套关系。上图是针对比较老的Android系统版本中制作的，新的版本中会略有出入，还有一个状态栏，但整体上没变。我们平时在Activity中setContentView(...)中对应的layout内容，对应的是上图中ViewGrop的树状结构，实际上添加到系统中时，会再裹上一层FrameLayout，就是上图中最里面的浅蓝色部分了。
 
 ​    这里咱们再通过一个实例来继续查看。AndroidStudio工具中提供了一个布局视察器工具，通过Tools > Android > Layout Inspector可以查看具体某个Activity的布局情况。下图中，左边树状结构对应了右边的可视图，可见DecorView是整个界面的根视图，对应右边的红色框，是整个屏幕的大小。黄色边框为状态栏部分；那个绿色边框中有两个部分，一个是白框中的ActionBar，对应了上图中紫色部分的TitleActionBar部分，即标题栏，平时咱们可以在Activity中将其隐藏掉；另外一个蓝色边框部分，对应上图中最里面的蓝色部分，即ContentView部分。下图中左边有两个蓝色框，上面那个中有个“contain_layout”，这个就是Activity中setContentView中设置的layout.xml布局文件中的最外层父布局，咱们能通过layout布局文件直接完全操控的也就是这一块，当其被add到视图系统中时，会被系统裹上ContentFrameLayout（显然是FrameLayout的子类），这也就是为什么添加layout.xml视图的方法叫setContentView(...)而不叫setView(...)的原因。
 
- ![img](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190518170653465-864329761.png)
+ ![img](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190518170653465-864329761.png)
 
  
 
@@ -44,7 +44,7 @@
 
 ​    整个调用链如下图所示，直到ViewRootImpl类中的performTraversals()中，才正式开始绘制流程了，所以一般都是以该方法作为正式绘制的源头。
 
-![img](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190520105432689-870375609.png)
+![img](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190520105432689-870375609.png)
 
 图3.1 View绘制起源UML时序图
 
@@ -54,7 +54,7 @@
 
 ​    在这咱们先大致看看ActivityThread类中的handleResumeActivity方法，咱们这里只贴出关键代码：
 
-[![复制代码](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/copycode.gif)](javascript:void(0);)
+[![复制代码](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/copycode.gif)](javascript:void(0);)
 
 ```
  1 //===========ActivityThread.java==========
@@ -327,11 +327,11 @@
 
   7）分析代码可知，一个MeasureSpec的模式如下所示，int长度为32位置，高2位表示mode，后30位用于表示size
 
-​      ![img](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190521193635415-455047678.png)
+​      ![img](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190521193635415-455047678.png)
 
    8）UNSPECIFIED、EXACTLY、AT_MOST这三个mode的示意图如下所示：
 
-​       ![img](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190521194344561-115486598.png)
+​       ![img](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190521194344561-115486598.png)
 
   9）makeMeasureSpec（int mode，int size）用于将mode和size打包成一个int型的MeasureSpec。
 
@@ -820,7 +820,7 @@ int childWidthMeasureSpec = getRootMeasureSpec(mWidth, lp.width);
 
 ​    如果不清楚LayoutParams类，可以看看本节开头的介绍。在getRootMeasureSpec(int,int)中，MeasureSpec.makeMeasureSpec方法在前面介绍MeasureSpec类的时候提到过，就是将size和mode组合成一个MeasureSpec值。这里我们可以看到ViewGroup.LayoutParam的width/height值和MeasureSpec的mode值存在如下的对应关系：
 
-![img](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190522153353850-1628612895.png)
+![img](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190522153353850-1628612895.png)
 
 ​    我们再继续看看windowSize和rootDimension的实际参数mWidth和lp.width的来历。
 
@@ -842,7 +842,7 @@ int childWidthMeasureSpec = getRootMeasureSpec(mWidth, lp.width);
 
 [![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
 
-​    从源码中对mWinFrame的注释来看，是由WindowManager提供的，该矩形正好是整个屏幕（这里暂时还没有在源码中找到明确的证据，后续找到后再补上）。在文章【[Android图形系统（三）-View绘制流程](https://www.jianshu.com/p/58d22426e79e)】的“2.2 窗口布局阶段”中有提到，WindowManagerService服务计算Activity窗口的大小，并将Activity窗口的大小保存在成员变量mWinFrame中。对Activity窗口大小计算的详情，有兴趣的可以阅读一下大神罗升阳的博文【[Android窗口管理服务WindowManagerService计算Activity窗口大小的过程分析](https://blog.csdn.net/Luoshengyang/article/details/8479101)】。
+​    从源码中对mWinFrame的注释来看，是由WindowManager提供的，该矩形正好是整个屏幕（这里暂时还没有在源码中找到明确的证据，后续找到后再补上）。在文章【[Android图形系统（三）-View绘制流程](https://www.jianshu.com/p/58d22426e79e)】的“2.2 窗口布局阶段”中有提到，WindowManagerService服务计算Activity窗口的大小，并将Activity窗口的大小保存在成员变量mWinFrame中。对Activity窗口大小计算的详情，有兴趣的可以阅读一下大神罗升阳的博文【[Android窗口管理服务WindowManagerService计算Activity窗口大小的过程分析](https://blog.csdn.net/Luoshengyang/.article/details/8479101)】。
 
 [![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
 
@@ -867,7 +867,7 @@ int childWidthMeasureSpec = getRootMeasureSpec(mWidth, lp.width);
 
 ​    第5行setView方法，在上一节中讲过，其中的参数就是ActivityThread类中传过来的，attrs是PhoneWindow的LayoutParams值，在第三节中就专门讲过这个参数，其width和height属性值均为LayoutParams.MATCH_PARENT。结合getRootMeasureSpec(int windowSize, int rootDimension)方法，可以得出如下结果：
 
-   ![img](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190522163151435-1032765476.png)
+   ![img](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190522163151435-1032765476.png)
 
 ​    此时，我们就得到了DecorView的MeasureSpec了，后面的递归操作就是在此基础上不断将测量要求从父布局传递到子view。
 
@@ -956,8 +956,8 @@ int childWidthMeasureSpec = getRootMeasureSpec(mWidth, lp.width);
 ```
  1 //==================ViewGroup.java====================
  2  /**
- 3      * Does the hard part of measureChildren: figuring out the MeasureSpec to
- 4      * pass to a particular child. This method figures out the right MeasureSpec
+ 3      * Does the hard p.art of measureChildren: figuring out the MeasureSpec to
+ 4      * pass to a p.articular child. This method figures out the right MeasureSpec
  5      * for one dimension (height or width) of one child view.
  6      *
  7      * The goal is to combine information from our MeasureSpec with the
@@ -1152,7 +1152,7 @@ int childWidthMeasureSpec = getRootMeasureSpec(mWidth, lp.width);
 
 ​    到目前为止，DecorView的整个测量流程就接上了，从ViewRootImpl类的performTraversals()开始，经过递归遍历，最后到叶子view测量结束，DecorView视图树的测量就完成了。这里再用一个流程图简单描述一下整个流程：
 
- ![img](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190527134518936-2000774802.png)
+ ![img](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190527134518936-2000774802.png)
 
  
 
@@ -1421,7 +1421,7 @@ performLayout(lp, mWidth, mHeight);
 
 ​    如果是前面搞清楚了DecorView视图树的测量流程，那这一节的布局流程也就非常好理解了，咱们这里再简单梳理一下：
 
- ![img](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190527140844001-1305183349.png)
+ ![img](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190527140844001-1305183349.png)
 
  
 
@@ -1690,7 +1690,7 @@ performLayout(lp, mWidth, mHeight);
 
 ​    针对上述的代码追踪流程，这里梳理了DecorView整个view树的draw过程的关键流程，其中节点比较多，需要耐心分析。
 
-![img](art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190527183905535-1898063916.png)
+![img](.art/AndroidView%20%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.assets/472002-20190527183905535-1898063916.png)
 
    
 
@@ -1892,7 +1892,7 @@ protected ViewGroup generateLayout(DecorView decor) {
             // System.out.println("Simple!");
         }
     
-        mDecor.startChanging();
+        mDecor.st.artChanging();
         //将上述确定的布局添加到mDecor中 mDecor其实是一个FrameLayout
         mDecor.onResourcesLoaded(mLayoutInflater, layoutResource);
         //contentParent是mDecor布局中的一个子view FrameLayout id是content
@@ -1964,7 +1964,7 @@ protected ViewGroup generateLayout(DecorView decor) {
               android:layout="@layout/action_mode_bar"
               android:layout_width="match_parent"
               android:layout_height="wrap_content"
-              android:theme="?attr/actionBarTheme" />
+              android:theme="?attr/actionB.artheme" />
     <FrameLayout
          android:id="@android:id/content"
          android:layout_width="match_parent"
@@ -2022,14 +2022,14 @@ public View inflate(XmlPullParser parser, @Nullable ViewGroup root, boolean atta
             try {
                 // Look for the root node.
                 int type;
-                while ((type = parser.next()) != XmlPullParser.START_TAG &&
+                while ((type = parser.next()) != XmlPullParser.ST.art_TAG &&
                         type != XmlPullParser.END_DOCUMENT) {
                     // Empty
                 }
     
-                if (type != XmlPullParser.START_TAG) {
+                if (type != XmlPullParser.ST.art_TAG) {
                     throw new InflateException(parser.getPositionDescription()
-                            + ": No start tag found!");
+                            + ": No st.art tag found!");
                 }
     			//得到layout的节点，例如，view、merge、include等
                 final String name = parser.getName();
@@ -2069,7 +2069,7 @@ public View inflate(XmlPullParser parser, @Nullable ViewGroup root, boolean atta
                     }
     
                     if (DEBUG) {
-                        System.out.println("-----> start inflating children");
+                        System.out.println("-----> st.art inflating children");
                     }
     
                     // Inflate all children under temp against its context.
@@ -2137,13 +2137,13 @@ Activity启动后在attach方法中会实例化一个PhoneWindow对象，说明�
 
 2：循环寻找那个如何找到ViewRootImpl中的，
 
-​       a: 查看View源码发现mPartent赋值是在assignParent中
+​       a: 查看View源码发现mP.artent赋值是在assignParent中
 
 ​        b:viewGroup 在addVIew的时候 会调用addViewInner 中会调用 child.assignParent(this)
 
-​       也就是说view中的mPartent 是父布局ViewGroup 那么循环往上推到就会到DecorView 根布局
+​       也就是说view中的mP.artent 是父布局ViewGroup 那么循环往上推到就会到DecorView 根布局
 
-​    那么根布局的mPartent是谁呢？这个是在Activity 启动的时候 走到onResume 时候创建的ViewRootImpl
+​    那么根布局的mP.artent是谁呢？这个是在Activity 启动的时候 走到onResume 时候创建的ViewRootImpl
 
 ​    并且在ViewRootImpl的setView中会有view.assignParent（this）这就就把ViewRootImpl和View整个关联起来了
 
@@ -2397,7 +2397,7 @@ public void addView(View view, ViewGroup.LayoutParams params,
         mRoots.add(root);
         mParams.add(wparams);
         
-        // do this last because it fires off messages to start doing things
+        // do this last because it fires off messages to st.art doing things
         try {
             root.setView(view, wparams, panelParentView);
         } catch (RuntimeException e) {

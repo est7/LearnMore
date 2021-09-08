@@ -20,6 +20,9 @@ public abstract class DisplayEventReceiver {
         }
     }
     
+    @FastNative
+    private static native void nativeScheduleVsync(long receiverPtr);
+    
     //屏幕刷新信号回调
     // Called from native code.
     @SuppressWarnings("unused")
@@ -146,4 +149,5 @@ public final class ViewRootImpl implements ViewParent,        View.AttachInfo.Ca
 
 面试常问，requestLayout 是立即执行的吗？目前我理解不是，需要等待屏幕同步信号到来。
 
-也可以利用此原理来监测屏幕掉帧情况，
+也可以利用此原理来监测屏幕掉帧情况，待搞
+

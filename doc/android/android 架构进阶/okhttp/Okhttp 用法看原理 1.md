@@ -582,7 +582,7 @@ public interface Interceptor {
 从 `getResponseWithInterceptorChain` 函数我们可以看到，`Interceptor.Chain` 的分布依次是：
 
 
-![okhttp_interceptors](art/Okhttp%20%E7%94%A8%E6%B3%95%E7%9C%8B%E5%8E%9F%E7%90%86%201.assets/okhttp_interceptors.png)
+![okhttp_interceptors](.art/Okhttp%20%E7%94%A8%E6%B3%95%E7%9C%8B%E5%8E%9F%E7%90%86%201.assets/okhttp_interceptors.png)
 
 okhttp_interceptors
 
@@ -1054,6 +1054,6 @@ CallServerInterceptor首先将http请求头部发给服务器，如果http请求
 
 
 
-![okhttp_full_process](art/Okhttp%20%E7%94%A8%E6%B3%95%E7%9C%8B%E5%8E%9F%E7%90%86%201.assets/okhttp_full_process.png)
+![okhttp_full_process](.art/Okhttp%20%E7%94%A8%E6%B3%95%E7%9C%8B%E5%8E%9F%E7%90%86%201.assets/okhttp_full_process.png)
 
 okhttp_full_process

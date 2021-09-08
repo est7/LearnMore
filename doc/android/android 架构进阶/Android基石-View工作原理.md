@@ -48,7 +48,7 @@
 
 **DecorView**是最顶层的View，是整个视图的根节点，继承自FrameLayout，因此它也是一个ViewGroup。下面以一张图来展示可能更直观一些。
 
-![1614657183775](art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657183775.png)
+![1614657183775](.art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657183775.png)
 
 DecorView下包含一个竖直方向的LinearLayout，它的内部根据页面主题的不同可能会有所不同，但是一定会包含一个子View，它的id为**android.R.id.content**，是一个FrameLayout，我们调用`setContentView()`设置的布局就是添加到了这个contentView中。
 
@@ -268,7 +268,7 @@ protected ViewGroup generateLayout(DecorView decor) {
               android:layout="@layout/action_mode_bar"
               android:layout_width="match_parent"
               android:layout_height="wrap_content"
-              android:theme="?attr/actionBarTheme" />
+              android:theme="?attr/actionB.artheme" />
     <FrameLayout
          android:id="@android:id/content"
          android:layout_width="match_parent"
@@ -741,7 +741,7 @@ public static int getChildMeasureSpec(int spec, int padding, int childDimension)
 
 `getChildMeasureSpec()`方法也验证了子View的MeasureSpec是由父View的MeasureSpec和子View的LayoutParams共同确定的。上面的判断可能有些复杂，不过别担心。已经有很多大佬总结出了表格，看起来更加直观一些，下图摘自[Carson_Ho大佬的博客](https://www.jianshu.com/p/1dab927b2f36)，表中的childSize表示子View的LayoutParams指定的大小，parentSize表示父View可用空间的大小。
 
-![1614657208227](art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657208227.png)
+![1614657208227](.art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657208227.png)
 
 我们可以先不去看最后一列**UNSPECIFIED**的情况，单看前两列可以找出一定的规律：
 
@@ -891,7 +891,7 @@ public View inflate(XmlPullParser parser, @Nullable ViewGroup root, boolean atta
         // ...
         View result = root;
         int type;
-        while ((type = parser.next()) != XmlPullParser.START_TAG &&
+        while ((type = parser.next()) != XmlPullParser.ST.art_TAG &&
                 type != XmlPullParser.END_DOCUMENT) {
         }
         // ...
@@ -1191,7 +1191,7 @@ protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 
 用一张图总结一下单一View的measure流程：
 
-![1614657232858](art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657232858.png)
+![1614657232858](.art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657232858.png)
 
 View的measure流程.jpg
 
@@ -1328,7 +1328,7 @@ public static int resolveSizeAndState(int size, int measureSpec, int childMeasur
  值得一提的是，LinearLayout的测量有一种特殊情况，就是对于自身的测量模式为**EXACTLY**并且子View设置了layout_weight的情况，这种情况会在后面重新进行一次子View的遍历和测量，由于这不是ViewGroup测量的通用流程，这里就不细说了，感兴趣的话可以查看一下这块的源码。
  最后用一张图总结一下ViewGroup的measure流程，虽然具体到每个ViewGroup的measure流程可能会有所不同，但是这几个步骤是通用的。
 
-![1614657248417](art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657248417.png)
+![1614657248417](.art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657248417.png)
 
 ViewGroup的measure流程.jpg
 
@@ -1368,11 +1368,11 @@ ViewGroup的measure流程.jpg
 
 运行效果如下：
 
-![1614657261224](art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657261224.png)
+![1614657261224](.art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657261224.png)
 
 可以看出LinearLayout的高度为100dp，并没有占满屏幕，但是我们明明设置了layout_height为**match_parent**，其实不止这样，即便是layout_height指定了精确数值（如200dp）也不会生效。解决方案就是为ScrollView添加**android:fillViewport="true"**属性，运行之后发现LinearLayout可以占满全屏了。
 
-![1614657271560](art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657271560.png)
+![1614657271560](.art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657271560.png)
 
 现在我们从源码角度分析一下产生这个问题的原因，看一下ScrollView的`onMeasure()`方法：
  **ScrollView的onMeasure方法**
@@ -1565,7 +1565,7 @@ protected boolean setFrame(int left, int top, int right, int bottom) {
 
 `setFrame()`方法首先会判断根据`mLeft != left || mRight != right || mTop != top || mBottom != bottom`，即View的位置是否发生了改变，如果发生了改变，则返回值为true，反之返回值为false。如果View的位置发生了改变，会重新为View的四个顶点位置赋值，对应四个成员变量mLeft、mTop、mRight和mBottom，关于这四个值我们通过一个示意图就可以很清楚了，图片摘自[GcsSloop大佬的博客](https://links.jianshu.com/go?to=https%3A%2F%2Fwww.gcssloop.com%2F%23blog)。
 
-![1614657286324](art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657286324.png)
+![1614657286324](.art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657286324.png)
 
 首次layout 前这四个变量都没有赋过值，因此这里`setFrame()`方法会返回true，我们回到`layout()`方法，changed的值就为true，接下来会执行`onLayout()`方法，我们接着来看`onLayout()`方法。
 
@@ -1579,7 +1579,7 @@ protected void onLayout(boolean changed, int left, int top, int right, int botto
 View中的`onLayout()`是一个空方法，没有声明任何逻辑，这是因为`layout()`方法已经确定了View的四个顶点的位置，而`onLayout()`方法是用于ViewGroup确定子View的位置，我们会再来分析。
  单一View的layout流程就分析完了，是不是很简单，用一张流程图总结一下：
 
-![1614657304314](art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657304314.png)
+![1614657304314](.art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657304314.png)
 
 View的layout流程.jpg
 
@@ -1670,7 +1670,7 @@ private void setChildFrame(View child, int left, int top, int width, int height)
 可以看到`setChildFrame()`方法其实就是调用了子View的`layout()`方法，完成子View的布局。`setChildFrame()`方法调用完成后，会增加childTop的值，它对应子View的mTop，继续下一个子View的layout，还是比较好理解的，竖直方向的LinearLayout的子View是一个接一个往下放置的。
  总结一下ViewGroup的layout流程，首先会调用`layout()`方法确定自身的位置，之后调用`onLayout()`方法，遍历所有的子View，根据ViewGroup的布局特性依次确定出每个子View的位置。流程图如下所示：
 
-![1614657314956](art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657314956.png)
+![1614657314956](.art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657314956.png)
 
 ViewGroup的layout流程.jpg
 
@@ -1863,7 +1863,7 @@ public void onDrawForeground(Canvas canvas) {
 `onDrawForeground()`方法用于绘制View的一些装饰，包括滚动条和前景，我们一般很少接触到该方法，就不具体分析了。
  用一张流程图总结一下单一View的draw流程：
 
-![1614657332174](art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657332174.png)
+![1614657332174](.art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657332174.png)
 
 View的draw流程.jpg
 
@@ -1926,7 +1926,7 @@ boolean draw(Canvas canvas, ViewGroup parent, long drawingTime) {
 这里省略了大量代码，可以看出该方法内部会根据条件执行一个参数的`draw()`方法（执行的条件我后面会分析），后面的流程就和单一View的绘制流程相同了。
  总结一下ViewGroup的draw流程，整体步骤和单一View的draw流程是一样的，不同的是ViewGroup重写了`dispatchDraw()`方法，在内部遍历子View并完成子View的绘制。
 
-![1614657343575](art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657343575.png)
+![1614657343575](.art/Android%E5%9F%BA%E7%9F%B3-View%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86.assets/1614657343575.png)
 
 ViewGroup的draw流程.jpg
 
@@ -2081,7 +2081,7 @@ public RenderNode updateDisplayListIfDirty() {
  * replayed if recording is not finished. Calling this method marks
  * the display list valid and {@link #isValid()} will return true.
  *
- * @see #start(int, int)
+ * @see #st.art(int, int)
  * @see #isValid()
  */
 public void end(DisplayListCanvas canvas) {

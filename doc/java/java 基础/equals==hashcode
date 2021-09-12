@@ -340,7 +340,11 @@ public class User {
 
 　　生成一个 int 类型的变量 result，并且初始化一个值，比如17
 
-　　对类中每一个重要字段，也就是影响对象的值的字段，也就是 equals 方法里有比较的字段，进行以下操作：a. 计算这个字段的值 filedHashValue = filed.hashCode(); b. 执行 result = 31 * result + filedHashValue;
+　　对类中每一个重要字段，也就是影响对象的值的字段，也就是 equals 方法里有比较的字段，进行以下操作：
+
+a. 计算这个字段的值 filedHashValue = filed.hashCode(); 
+
+b. 执行 result = 31 * result + filedHashValue;
 
 ## 七、为什么要使用 31
 
@@ -402,7 +406,34 @@ public class User {
 
 
 
+HashCode重写诀窍：
+1：boolean 类型  f ? 0:1;
 
+2：引用对象也需要重写HashCode
+
+3：以一个固定数值 result = 17：为基础数值
+
+4：以31位质子基础 * result +d对象的hascode
+
+
+
+```java
+@Override
+   public int hashCode() {
+        int result = 17;
+        result = 31 * result + mInt;
+        result = 31 * result + (mBoolean ? 1 : 0);
+        result = 31 * result + Float.floatToIntBits(mFloat);
+        result = 31 * result + (int)(mLong ^ (mLong >>> 32));
+        long mDoubleTemp = Double.doubleToLongBits(mDouble);
+        result =31 * result + (int)(mDoubleTemp ^ (mDoubleTemp >>> 32));
+        result = 31 * result + (mString == null ? 0 : mMsgContain.hashCode());
+        result = 31 * result + (mObj == null ? 0 : mObj.hashCode());
+        return result;
+    }
+```
+
+
 
 
 

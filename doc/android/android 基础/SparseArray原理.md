@@ -87,7 +87,7 @@ SparseArray 的使用方式，符合我们的使用习惯，基本上看看方�
 
 
 
-![image-20210825084548924](art/image-20210825084548924.png)
+![image-20210825084548924](https://raw.githubusercontent.com/Androidkobe/upload-image-note-learnmore/master/img/image-20210825084548924.png)
 
 
 
@@ -162,7 +162,7 @@ public void put(int key, E value) {
 
 数组的插入，一定会伴随着数据的搬移。
 
-![image-20210825084646437](art/image-20210825084646437.png)
+![image-20210825084646437](https://raw.githubusercontent.com/Androidkobe/upload-image-note-learnmore/master/img/image-20210825084646437.png)
 
 而在 `put()` 方法中，也会用到二分查找定位 key 的 index，我们主要关注其中的 `GrowingArrayUtils.insert()` 方法。
 
@@ -196,7 +196,7 @@ SparseArray 用到了「数组」结构，在插入的时候为了给新数据�
 
 SparseArray 对删除操作的优化，引入 DELETE 标记，以此来减少在删除数据时对数据的搬运次数，以此达到在删除时做到 O(1) 的时间复杂度。
 
-![image-20210825084716142](art/image-20210825084716142.png)
+![image-20210825084716142](https://raw.githubusercontent.com/Androidkobe/upload-image-note-learnmore/master/img/image-20210825084716142.png)
 
 而在插入的时候，遇到 DELETE 标识，表示当前数据已经被删除掉了。
 
@@ -248,7 +248,7 @@ HashMap 相较于 SparseArray 复杂很多，使用到的属性变量也多不�
 
 在 Stack Overflow 中就有人以 1000 条数据作为样本，计算 HashMap 与 SparseArray 对内存的占用情况，单位是 byte。
 
-![image-20210825084955405](art/image-20210825084955405.png)
+![image-20210825084955405](https://raw.githubusercontent.com/Androidkobe/upload-image-note-learnmore/master/img/202110191909362.png)
 
 虽然这里的测试不是很严谨，但是依然可以看到他们在内存空间的使用上，已经不是一个数量积的了。
 

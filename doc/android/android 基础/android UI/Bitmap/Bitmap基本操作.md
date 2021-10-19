@@ -257,7 +257,7 @@ Log.i("doris", "解压后图片：" + options.inSampleSize + options.outWidth + 
     
 ```
 
-### 6.5长图加载
+### 6.5：长图加载
 
 ```java
 private static Bitmap decodeStreamInternal(@NonNull InputStream is,
@@ -270,5 +270,295 @@ return nativeDecodeStream(is, tempStorage, outPadding, opts,
 Options.nativeInBitmap(opts),	
 Options.nativeColorSpace(opts));
 }
+```
+
+### 6.6：图片不解码，只获取类型及数据
+
+```kotlin
+    val options = BitmapFactory.Options().apply {
+        inJustDecodeBounds = true//设置为
+    }
+    BitmapFactory.decodeResource(resources, R.id.myimage, options)
+    val imageHeight: Int = options.outHeight
+    val imageWidth: Int = options.outWidth
+    val imageType: String = options.outMimeType//获取图片类型 jpg  png ...
+    
+```
+
+### 6.7：图片比例缩小展示
+
+```kotlin
+    imageView.setImageBitmap(
+            decodeSampledBitmapFromResource(resources, R.id.myimage, 100, 100)
+    )
+    
+```
+
+
+
+```kotlin
+    fun decodeSampledBitmapFromResource(
+            res: Resources,
+            resId: Int,
+            reqWidth: Int,
+            reqHeight: Int
+    ): Bitmap {
+        // First decode with inJustDecodeBounds=true to check dimensions
+        return BitmapFactory.Options().run {
+            inJustDecodeBounds = true
+            BitmapFactory.decodeResource(res, resId, this)
+
+            // Calculate inSampleSize
+            inSampleSize = calculateInSampleSize(this, reqWidth, reqHeight)
+
+            // Decode bitmap with inSampleSize set
+            inJustDecodeBounds = false
+
+            BitmapFactory.decodeResource(res, resId, this)
+        }
+    }
+    
+```
+
+
+
+```kotlin
+    fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        // Raw height and width of image
+        val (height: Int, width: Int) = options.run { outHeight to outWidth }
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+
+            val halfHeight: Int = height / 2
+            val halfWidth: Int = width / 2
+
+            // Calculate the largest inSampleSize value that is a power of 2 and keeps both
+            // height and width larger than the requested height and width.
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+
+        return inSampleSize
+    }
+```
+
+### 6.8:bitmap 内存缓存
+
+```kotlin
+    private LruCache<String, Bitmap> memoryCache;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        ...
+        // Get max available VM memory, exceeding this amount will throw an
+        // OutOfMemory exception. Stored in kilobytes as LruCache takes an
+        // int in its constructor.
+        final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+
+        // Use 1/8th of the available memory for this memory cache.
+        final int cacheSize = maxMemory / 8;
+	   //LruCache创建
+        memoryCache = new LruCache<String, Bitmap>(cacheSize) {
+            @Override
+            protected int sizeOf(String key, Bitmap bitmap) {
+                // The cache size will be measured in kilobytes rather than
+                // number of items.
+                //返回当前bitmap 大小
+                return bitmap.getByteCount() / 1024;
+            }
+        };
+        ...
+    }
+
+   public void loadBitmap(int resId, ImageView imageView) {
+        final String imageKey = String.valueOf(resId);
+
+        final Bitmap bitmap = getBitmapFromMemCache(imageKey);
+        if (bitmap != null) {
+            mImageView.setImageBitmap(bitmap);
+        } else {
+            mImageView.setImageResource(R.drawable.image_placeholder);
+            BitmapWorkerTask task = new BitmapWorkerTask(mImageView);
+            task.execute(resId);
+        }
+    }
+
+    public void addBitmapToMemoryCache(String key, Bitmap bitmap) {
+        if (getBitmapFromMemCache(key) == null) {
+            memoryCache.put(key, bitmap);
+        }
+    }
+
+    public Bitmap getBitmapFromMemCache(String key) {
+        return memoryCache.get(key);
+    }
+    
+```
+
+```kotlin
+    class BitmapWorkerTask extends AsyncTask<Integer, Void, Bitmap> {
+        ...
+        // Decode image in background.
+        @Override
+        protected Bitmap doInBackground(Integer... params) {
+            final Bitmap bitmap = decodeSampledBitmapFromResource(
+                    getResources(), params[0], 100, 100));
+            addBitmapToMemoryCache(String.valueOf(params[0]), bitmap);
+            return bitmap;
+        }
+        ...
+    }
+    
+```
+
+### 6.9:bitmap 使用磁盘缓存
+
+```kotlin
+     private const val DISK_CACHE_SIZE = 1024 * 1024 * 10 // 10MB
+    private const val DISK_CACHE_SUBDIR = "thumbnails"
+    ...
+    private var diskLruCache: DiskLruCache? = null
+    private val diskCacheLock = ReentrantLock()
+    private val diskCacheLockCondition: Condition = diskCacheLock.newCondition()
+    private var diskCacheStarting = true
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        ...
+        // Initialize memory cache
+        ...
+        // Initialize disk cache on background thread
+        val cacheDir = getDiskCacheDir(this, DISK_CACHE_SUBDIR)
+        InitDiskCacheTask().execute(cacheDir)
+        ...
+    }
+
+    internal inner class InitDiskCacheTask : AsyncTask<File, Void, Void>() {
+        override fun doInBackground(vararg params: File): Void? {
+            diskCacheLock.withLock {
+                val cacheDir = params[0]
+                diskLruCache = DiskLruCache.open(cacheDir, DISK_CACHE_SIZE)
+                diskCacheStarting = false // Finished initialization
+                diskCacheLockCondition.signalAll() // Wake any waiting threads
+            }
+            return null
+        }
+    }
+
+    internal inner class  BitmapWorkerTask : AsyncTask<Int, Unit, Bitmap>() {
+        ...
+
+        // Decode image in background.
+        override fun doInBackground(vararg params: Int?): Bitmap? {
+            val imageKey = params[0].toString()
+
+            // Check disk cache in background thread
+            return getBitmapFromDiskCache(imageKey) ?:
+                    // Not found in disk cache
+                    decodeSampledBitmapFromResource(resources, params[0], 100, 100)
+                            ?.also {
+                                // Add final bitmap to caches
+                                addBitmapToCache(imageKey, it)
+                            }
+        }
+    }
+
+    fun addBitmapToCache(key: String, bitmap: Bitmap) {
+        // Add to memory cache as before
+        if (getBitmapFromMemCache(key) == null) {
+            memoryCache.put(key, bitmap)
+        }
+
+        // Also add to disk cache
+        synchronized(diskCacheLock) {
+            diskLruCache?.apply {
+                if (!containsKey(key)) {
+                    put(key, bitmap)
+                }
+            }
+        }
+    }
+
+    fun getBitmapFromDiskCache(key: String): Bitmap? =
+            diskCacheLock.withLock {
+                // Wait while disk cache is started from background thread
+                while (diskCacheStarting) {
+                    try {
+                        diskCacheLockCondition.await()
+                    } catch (e: InterruptedException) {
+                    }
+
+                }
+                return diskLruCache?.get(key)
+            }
+
+    // Creates a unique subdirectory of the designated app cache directory. Tries to use external
+    // but if not mounted, falls back on internal storage.
+    fun getDiskCacheDir(context: Context, uniqueName: String): File {
+        // Check if media is mounted or storage is built-in, if so, try and use external cache dir
+        // otherwise use internal cache dir
+        val cachePath =
+                if (Environment.MEDIA_MOUNTED == Environment.getExternalStorageState()
+                        || !isExternalStorageRemovable()) {
+                    context.externalCacheDir.path
+                } else {
+                    context.cacheDir.path
+                }
+
+        return File(cachePath + File.separator + uniqueName)
+    }
+    
+    
+```
+
+## 处理配置更改
+
+运行时配置更改（例如屏幕方向更改）会导致 Android 销毁并使用新的配置重新启动正在运行的 Activity（有关此行为的更多信息，请参阅[处理运行时更改](https://developer.android.com/guide/topics/resources/runtime-changes)）。您需要避免重新处理所有图片，以便用户在配置发生更改时能够获得快速、流畅的体验。
+
+幸运的是，您在[使用内存缓存](https://developer.android.com/topic/performance/graphics/cache-bitmap#memory-cache)部分构建了一个实用的位图内存缓存。您可以使用通过调用 `setRetainInstance(true)` 保留的 `Fragment` 将该缓存传递给新的 Activity 实例。重新创建 Activity 后，系统会重新附加这个保留的 `Fragment`，并且您将可以访问现有的缓存对象，从而能够快速获取图片并将其重新填充到 `ImageView` 对象中。
+
+以下是使用 `Fragment` 在配置更改时保留 `LruCache` 对象的示例：
+
+```kotlin
+    private LruCache<String, Bitmap> memoryCache;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        ...
+        RetainFragment retainFragment =
+                RetainFragment.findOrCreateRetainFragment(getFragmentManager());
+        memoryCache = retainFragment.retainedCache;
+        if (memoryCache == null) {
+            memoryCache = new LruCache<String, Bitmap>(cacheSize) {
+                ... // Initialize cache here as usual
+            }
+            retainFragment.retainedCache = memoryCache;
+        }
+        ...
+    }
+
+    class RetainFragment extends Fragment {
+        private static final String TAG = "RetainFragment";
+        public LruCache<String, Bitmap> retainedCache;
+
+        public RetainFragment() {}
+
+        public static RetainFragment findOrCreateRetainFragment(FragmentManager fm) {
+            RetainFragment fragment = (RetainFragment) fm.findFragmentByTag(TAG);
+            if (fragment == null) {
+                fragment = new RetainFragment();
+                fm.beginTransaction().add(fragment, TAG).commit();
+            }
+            return fragment;
+        }
+
+        @Override
+        public void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setRetainInstance(true);
+        }
+    }
+    
 ```
 

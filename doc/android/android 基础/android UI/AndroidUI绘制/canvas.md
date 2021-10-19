@@ -338,6 +338,46 @@ public void rCubicTo(float x1, float y1, float x2, float y2,float x3, float y3)
 
 ![1632830084132](.art/canvas/1632830084132.png)
 
+
+
+```kotlin
+    val path = Path()
+    // 控制点： 手指的前一个点，用来当控制点
+    var prevX = 0f
+    var prevY = 0f
+
+    override fun onDraw(canvas: Canvas) {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            strokeWidth = 2f
+            style = Paint.Style.STROKE
+            color = Color.RED
+        }
+        canvas.drawPath(path, paint)
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                path.moveTo(event.x, event.y)
+                prevX = event.x
+                prevY = event.y
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+//                path.lineTo(event.x, event.y)
+                // 结束点 为线段的中间位置
+                val endX = (event.x + prevX) / 2
+                val endY = (event.y + prevY) / 2
+                path.quadTo(prevX, prevY, endX, endY)
+                prevX = endX   // 下一个控制点
+                prevY = endY
+                postInvalidate()
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+```
+
 2：拖拽效果
 
 3：水波浪

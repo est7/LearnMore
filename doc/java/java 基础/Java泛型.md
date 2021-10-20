@@ -248,8 +248,6 @@ li.add(new Integer(3));
 oa[1] = li; // Unsound, but passes run time store check
 String s = lsa[1].get(0); // Run-time error ClassCastException.
 
-  
-        @pdai: 代码已经复制到剪贴板
     
 ```
 

@@ -363,3 +363,4 @@ Observable.zip(observable1, observable2,
 ```
 
 好了, 本次的教程就到这里吧. 又到周末鸟, 下周见.
+

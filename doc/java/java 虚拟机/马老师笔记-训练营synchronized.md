@@ -393,7 +393,7 @@ synchronized优化的过程和markword息息相关
 
 1. Object o = new Object()
    锁 = 0 01 无锁态 
-注意：如果偏向锁打开，默认是匿名偏向状态
+   注意：如果偏向锁打开，默认是匿名偏向状态
    
 2. o.hashCode()
    001 + hashcode
@@ -620,7 +620,7 @@ public class T01_ThreadVisibility {
 * 另外，java编译器或者JIT编译器有可能会去除没用的字段，所以填充字段必须加上volatile
   
   ```java
-package com.mashibing.juc.c_028_FalseSharing;
+  package com.mashibing.juc.c_028_FalseSharing;
   
   public class T02_CacheLinePadding {
       private static class Padding {

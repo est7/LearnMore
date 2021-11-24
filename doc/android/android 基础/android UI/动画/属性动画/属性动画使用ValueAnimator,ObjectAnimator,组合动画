@@ -1,0 +1,434 @@
+转载请注明出处（万分感谢！）：
+http://blog.csdn.net/javazejian/article/details/52273733
+出自【zejian的博客】
+
+关联文章:
+
+走进绚烂多彩的属性动画-Property Animation（上篇）
+走进绚烂多彩的属性动画-Property Animation之Interpolator和TypeEvaluator（下篇）
+属性动画-Property Animation之ViewPropertyAnimator 你应该知道的一切
+Android布局动画之animateLayoutChanges与LayoutTransition
+
+1.属性动画概述
+  动画一直是App增强用户交互和用户体验的一个重要环节，特别是在某些提示场景或者广告场景中，合理使用动画可以给用户带来更加愉悦的使用体验，因此我们很有必要掌握动画的使用及其原理，从本篇开始，我们就来全面深入了解属性动画的使用及其原理。我们知道在早期的Android版本中，由于动画机制不健全，如补间动画只能作用于View对象上而且补间动画并不能响应View的点事件，Android 3.0以后google官方推出了新的动画框架即属性动画，在填补了补间动画的缺点后还要拥有更加灵活的动画操作，属性动画不仅能作用在View上而且还作用在非View的对象上，可以说是任意对象，只要我们想添加动画效果，属性动画都可以满足我们的要求，而且从名称我们就可以看出，属性，属性，顾名思义就是作用在对象的属性上，因此可以从根本上解决补间动画无法响应View对象点击事件的问题。当然Android 3.0以下是使用不了属性动画的，不过我们可以使用nineoldandroids开源动画库来兼容低版本，ninooldandroidsx下载网址：http://nineoldandroids.com
+
+2.原理简要概述
+  在开始之前，我们先来简单了解一下属性动画的工作原理，以便我们后续更好的学习。Android属性动画要求作用的对象提供该属性的set方法和get方法，这是因为属性动画内部会根据我们传递的属性初始值和最终值，然后多次去调用set方法（内部自动调用），每次传递给set方法的值都是变化的，也就是说随着时间的推移，所传递的值越来越接近最终值，在这个过程中也就形成了动画效果。而当开始动画时没有我们没有提供初始值，这时动画内部就回去调用get方法获取，因此如果我们没有传递初始值就必须确保作用的对象拥有get方法，否则动画内部调用时有可能因为没有get方法而造成程序crash。我们通过下图协助我们理解这个过程：
+
+  很显然View的动画在40ms通过不断设置setX()的值来改变View的属性X的，从而通过这种平滑的过度达到动画的效果。实际上动画内部是通过反射实现对View的属性赋值操作。好~，到这里我们大概地了解完属性动画的工作原理即可，不太明白也没关系，我们接下来的分析再慢慢领会，下面开始分析属性动画的常规用法。
+
+3.属性动画的常规用法
+3.1代码中的使用
+3.1.1 ObjectAnimator
+   属性动画主要包含ObjectAnimator与ValueAnimator以及AnimatorSet 三个常用动画类。我们先来了解一下ObjectAnimator，ObjectAnimator继承自ValueAnimator，是一个操作对象的属性的动画类，可以说是一个细分类，我们创建一个ObjectAnimator只需要通过其静态工厂类即可，基本代码如下：
+
+```
+//函数原型，针对属性float值类型的变化
+public static ObjectAnimator ofFloat(Object target, String propertyName, float... values)
+//使用代码
+ObjectAnimator objectAnimator=ObjectAnimator.ofFloat(view,"x",10f,100f);
+
+//函数原型，针对属性int值类型的变化
+public static ObjectAnimator ofInt(Object target, String propertyName, int... values) 
+//使用代码
+ObjectAnimator objectAnimator=ObjectAnimator.ofInt(view,"x",10,100);
+
+//函数原型，针对属性颜色的变化
+public static ObjectAnimator ofArgb(Object target, String propertyName, int... values)
+//使用代码
+ObjectAnimator objectAnimator=ObjectAnimator.ofArgb(view,"backgroundColor",0xffffff80,0xffff80fe);
+```
+
+
+  以上三种创建方式的参数都包含一个作用的对象和对象的属性名称以及一个可变参数，我们要注意的的是这个属性必须要有get和set函数（在我们不确定是否set和get方法时，不妨查看一下view的源码），因为动画内部会通过java反射机制来调用set函数修改对象属性值。接着我们来看一个简单的案例：
+
+  以上三种创建方式的参数都包含一个作用的对象和对象的属性名称以及一个可变参数，我们要注意的的是这个属性必须要有get和set函数（在我们不确定是否set和get方法时，不妨查看一下view的源码），因为动画内部会通过java反射机制来调用set函数修改对象属性值。接着我们来看一个简单的案例：
+
+```
+ObjectAnimator objectAnimator=ObjectAnimator.ofFloat(btn,"translationX",0f,200f);
+objectAnimator.setDuration(3000);
+`objectAnimator.start();    `
+
+```
+
+效果如下：
+
+  通过ObjectAnimator的静态工厂方法，创建一个ObjectAnimator对象，我们传递的第一个参数就是要动画要作用的view对象btn，第二个参数则是要操作的属性，而后面的一个参数是一个可变参数数组，当传递参数数组只有一个数值时，动画内部去调用get方法获取初始化参数，并把传递参数作为目标值，而当传递参数的数组中有两个数值时，则会把第一个数值作为初始值，这时就不会去调用get了，只会调用set方式设置动画过程，并以第二个数值作为目标值，如我们上面传递了0和200，其中0就是初始值，而200就是目标值。其后的设置，setDuration(3000);设置动画时间，objectAnimator.start();则是启动动画。
+  到这里，我们可能会有个疑问，那如果数组中值大于2个呢？实际上如果多于2个数值，则继续执行动画，如下我们改为3个数值，让button回到原点，
+
+```
+ObjectAnimator objectAnimator=ObjectAnimator.ofFloat(btn,"translationX",0f,200f,0f);
+objectAnimator.setDuration(3000);
+objectAnimator.start();     
+```
+
+效果如下：
+
+  这里再次强调一次，在使用ObjectAnimator的时候，一定要确保操作的属性必须具有get，set方法，不然轻则不起效果，重则直接crash。
+  下面我们再给出一个颜色渐变的动画效果的案例我们改变一个对象的背景色属性，让背景在3秒内实现颜色渐变效果
+
+````
+package com.zejian.animator;
+
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
+import android.annotation.TargetApi;
+import android.os.Build;
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.widget.Button;
+
+public class MainActivity extends AppCompatActivity {
+
+```
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        Button btn = (Button) findViewById(R.id.btn)；
+        ObjectAnimator colorAima=ObjectAnimator.ofArgb(btn,"backgroundColor",
+        getResourcesColor(R.color.colorAccent),
+        getResourcesColor(R.color.colorPrimary));
+        //设置无限循环
+        colorAima.setRepeatCount(ValueAnimator.INFINITE);
+        //设置反转效果
+        colorAima.setRepeatMode(ValueAnimator.REVERSE);
+        colorAima.setDuration(3000);
+        colorAima.start();
+    }
+    
+    /**
+     * 获取资源中的颜色
+     * @param color
+     * @return
+     */
+    public int getResourcesColor(int color) {
+        int ret = 0x00ffffff;
+        try {
+            ret =getResources().getColor(color);
+        } catch (Exception e) {
+        }
+        return ret;
+    }
+
+}
+
+```
+
+  
+````
+
+代码比较简单，我们直接看效果：
+
+  代码比较简单，我们直接看效果：
+
+  效果很明显，是不是发现属性动画的代码特别简洁，我们再来看看属性动画如何实现补间动画的效果，先来一个alpha动画，代码如下：
+
+ObjectAnimator.ofFloat(btn,"alpha",0,1).setDuration(5000).start();
+1
+  一句代码搞定，效果如下：
+
+  干脆来个旋转，平移，透明变化，缩放一起播放的动画：
+
+```
+AnimatorSet set = new AnimatorSet();
+set.playTogether( ObjectAnimator.ofFloat(btn,"alpha",0,1,0.5f,1),
+        ObjectAnimator.ofFloat(btn,"rotation",0,360,0),
+        ObjectAnimator.ofFloat(btn,"scaleX",0,1,1.5f,1),
+        ObjectAnimator.ofFloat(btn,"scaleY",0,1,1.5f,1),
+        ObjectAnimator.ofFloat(btn,"translationX",0,125),
+        ObjectAnimator.ofFloat(btn,"translationY",0,125)
+    );
+set.setDuration(5000).start();
+```
+
+
+  其中AnimatorSet为集合动画（后面会分析），效果如下：
+
+  到此我们对ObjectAnimator对象的使用基本上有了比较清晰的了解了。最后这里给出旋转，平移，透明变化，缩放几个属性值的小结：
+
+属性	含义
+translationX与translationY	这两个属性作为一种增量来控制View对象相对于它父容器的左上角坐标偏移的位置
+scaleX与scaleY	控制View对象围绕它的支点进行2D缩放
+alpha	表示View对象的alpha透明度。默认值1，不透明，0代表完全透明，即不可见。
+rotation、rotationX、rotationY	这三个属性控制View对象围绕支点进行旋转， 其中rotation对应2D，rotationX、rotationY对应3D旋转
+pivotX、pivotY	两个属性控制着View对象的支点位置，包含旋转和缩放都围绕这个支点变换和处理。 默认值为View对象的中心,如view.setPivotX(0.5f);view.setPivotY(0.5f);
+  至于ObjectAnimator对象的一些常用方法，我们后面会和ValueAnimator对象放在一起小结。
+
+3.1.2 ValueAnimator
+  接着我们继续了解另一个动画类ValueAnimator，它是整个属性动画机制当中的核心类，前面我们已经提到了，属性动画的运行机制是通过内部不断地调用set方式对属性的值进行操作来实现动画的，而初始值和结束值之间的动画过渡就是由ValueAnimator这个类来负责计算的。说明白点就是ValueAnimator本身不作用于任何对象，它作用的是一个数值，ValueAnimator本身没有任何动画效果，我们只需要将初始值和结束值提供给ValueAnimator，并且告诉它动画运行的时长，ValueAnimator类就会自动帮我们完成从初始值平滑地过渡到结束值的计算。我们来看一个例子：
+
+```
+ValueAnimator anim = ValueAnimator.ofFloat(0f, 1f);
+anim.setDuration(500);
+anim.start();
+```
+
+  从代码中看，我们并没有传入任何对象，只是传递了0-1的数值，这时我们开启动画，ValueAnimator便会在500内对[0,1]数值做运动。我们不妨给ValueAnimator添加一个监听器AnimatorUpdateListener（这个接口后面会分析），然后输出计算过程中的估值数，代码修改如下：
+
+ValueAnimator anim = ValueAnimator.ofFloat(0f, 1f);
+anim.setDuration(500);
+anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+    @Override
+    public void onAnimationUpdate(ValueAnimator animation) {
+        //获取当前动画的进度值
+      float currentValue = (float) animation.getAnimatedValue(); 
+        Log.e("wzj","fraction-->"+currentValue);
+    }
+});
+anim.start();
+
+  打印LOG如下：
+
+  从log可以看出ValueAnimator类确实是对[0,1]的数值做了“运动”。实际上从上面的代码我们也可以看出，如果我们想通过ValueAnimator实现view对象动画效果，也是没问题的，因为我们可以在监听器中利用当前的数据值，来修改我们view对象的属性值，这样也就是我们自己定义动画了，最终也实现了动画效果的。我们这里利用ValueAnimator来实现一个前面的类似的缩放+透明变化案例：
+
+```
+ValueAnimator anim = ValueAnimator.ofFloat(0f,1f);
+anim.setDuration(5000);
+anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+
+    @Override
+    public void onAnimationUpdate(ValueAnimator animation) {
+     //设置当前动画的进度值
+        btn.setAlpha((Float) animation.getAnimatedValue());
+        btn.setScaleX((Float) animation.getAnimatedValue());
+        btn.setScaleY((Float) animation.getAnimatedValue());
+    
+    }
+
+});
+anim.start();
+```
+
+
+我们设置了[0,1]的变化范围，然后在ValueAnimator.AnimatorUpdateListener监听器（该类监听动画执行的每一帧）中给btn设置了缩放动画和透明变化的动画，效果如下：
+
+我们设置了[0,1]的变化范围，然后在ValueAnimator.AnimatorUpdateListener监听器（该类监听动画执行的每一帧）中给btn设置了缩放动画和透明变化的动画，效果如下：
+
+
+除了ofFloat方法外还有ofInt方法，ofObject方法，如下：
+
+````
+ValueAnimator.ofInt(0,100).setDuration(500).start();
+1
+这个比较简单，不过多分析了，还有另外一个方法
+
+public static ValueAnimator ofObject(TypeEvaluator evaluator, Object... values)
+1
+  它有两个参数，第一个是自定义的Evaluator，第二个是可变长参数，Object类型的； Evaluator是一个类型估值器(后面我们会分析它)。对于ofObject这个方法我们打算后面分析完Evaluator再来详细分析，所以这里就不深入先哈~。除了以上所说的，ValueAnimator还可以设置动画的播放次数、播放模式。如下：
+
+```
+//设置模式ValueAnimator.REVERSE表示反向播放,ValueAnimator.RESTART表示从头播放
+ valueAnimator.setRepeatMode(ValueAnimator.REVERSE);
+ //设置次数,ValueAnimator.INFINITE表示无限循环
+ valueAnimator.setRepeatCount(ValueAnimator.INFINITE);
+```
+
+
+````
+
+
+  注释很明白，不过多解释了。这样我们对ValueAnimator也有了比较清楚的了解了，最后总结一下ValueAnimator和ObjectAnimator的共同常用方法（未涉及的请查阅官方API，哈~）：
+
+方法名称	说明
+ValueAnimator ofInt(int… values)	可变参数传入int值，计算所给时间内的变动值或者动画过程
+ValueAnimator ofFloat(float… values)	可变参数传入float值，计算所给时间内的变动值或者动画过程
+ValueAnimator ofObject(TypeEvaluator evaluator, Object… values)	它有两个参数，第一个是自定义的Evaluator，是一个类型估值器，第二个是可变长参数， 设置所传递对象的属性数值变化范围，后面会详细分析这个方法，这里不明白没有关系。
+Object getAnimatedValue()	返回的类型是一个Object原始类型,可能会强转成int类型或者Float类型，表示当前动画的进度值
+ValueAnimator setDuration(long duration)	设置动画时长，单位是毫秒
+void start()	启动动画
+void setRepeatCount(int value)	设置循环次数,设置为INFINITE表示无限循环
+void setRepeatMode(int value)	设置循环模式，ValueAnimator.REVERSE表示反向播放,ValueAnimator.RESTART表示从头播放
+void cancel()	取消动画
+setStartDelay(long startDelay)	就是设置多久后动画才开始，单位毫秒
+addUpdateListener(AnimatorUpdateListener listener)	添加动画监听器，监听动画的每一帧，也就是每一帧都会回调该监听器的方法
+addListener(AnimatorListener listener)	添加动画监听器，监听动画的开始，结束，取消以及重复播放事件， 一般使用AnimatorListenerAdapter实现。
+3.1.3 组合动画
+3.1.3.1 PropertyValueHolder
+  在属性动画中，我们可能会同一个View对象的多个属性同时作用多种动画，这时我们就可以是用PropertyValueHolder来实现。下面我们直接看一个案例：
+
+```
+PropertyValuesHolder p1=PropertyValuesHolder.ofFloat("scaleX",0.5f,1);
+PropertyValuesHolder p2=PropertyValuesHolder.ofFloat("scaleY",0.5f,1);
+PropertyValuesHolder p3=PropertyValuesHolder.ofFloat("translationX",0,200f);
+ObjectAnimator.ofPropertyValuesHolder(btn,p1,p2,p3).setDuration(500).start();
+```
+
+  我们在代码中，使用了PropertyValuesHolder对象来控制scaleX，scaleY，translationX三个属性，最后设置到ObjectAnimator中，开启动画，3个动画便同时开始了。好~，对PropertyValuesHolder我们暂时了解这么就行，下面看AnimatorSet。
+
+3.1.3.2 AnimatorSet
+  对于一个View对象的多个属性同时作用多个对象时，在上面我们已经使用PropertyValuesHolder实现了这种效果，而AnimatorSet也可以实现相同的效果，同时AnimatorSet还能实现更为精确的动画顺序控制。我们利用AnimatorSet实现上面的PropertyValuesHolder的动画效果，代码如下：
+
+```
+ObjectAnimator b1 = ObjectAnimator.ofFloat(btn,"scaleX",0.5f,1);
+ObjectAnimator b2 = ObjectAnimator.ofFloat(btn,"scaleY",0.5f,1);
+ObjectAnimator b3 = ObjectAnimator.ofFloat(btn,"translationX",0f,200f);
+AnimatorSet animatorSet =new AnimatorSet();
+animatorSet.setDuration(500);
+animatorSet.playTogether(b1,b2,b3);
+animatorSet.start();
+```
+
+其中playTogether()方法就是将3个动画一起同时执行，还有playSequentially()方法则是3个动画按顺序执行。这里我们来看看AnimatorSet的一些常用的控制动画顺序的方法
+
+方法名称	方法说明
+playTogether(Animator… items)	items表示每个子动画，该方法表示同时执行集合动画中的所有动画。
+playSequentially(Animator… items)	items表示每个子动画，该方法表示按顺序执行集合动画中的所有动画。
+play(Animator anim)	向这个方法中传入一个Animator对象(ValueAnimator或ObjectAnimator) 将会返回一个AnimatorSet.Builder的实例，并会执行这个动画
+after(Animator anim)	将现有动画插入到传入的动画之后执行
+after(long delay)	将现有动画延迟指定毫秒后执行
+before(Animator anim)	将现有动画插入到传入的动画之前执行
+with(Animator anim)	将现有动画和传入的动画同时执行
+了解完这几个主要方法后，我们看一个例子，代码如下：
+
+```
+ObjectAnimator moveIn = ObjectAnimator.ofFloat(btn, "translationX", -500f, 0f);
+ObjectAnimator rotate = ObjectAnimator.ofFloat(btn, "rotation", 0f, 360f);
+ObjectAnimator fadeInOut = ObjectAnimator.ofFloat(btn, "alpha", 1f, 0f, 1f);
+AnimatorSet animSet = new AnimatorSet();
+animSet.play(rotate).with(fadeInOut).after(moveIn);
+animSet.setDuration(5000);
+animSet.start();
+```
+
+
+根据前面的方法说明，我们可猜到最先执行的动画应该是moveIn，然后rotate和fadeInOut再同时执行，下面我们看看最终效果：
+
+很显然，跟我们猜测是一样的。好~，对于AnimatorSet我们就先了解到这里，哈~。
+
+3.2 xml中的使用
+  上面介绍了属性动画的代码实现方式，这里我们来简单介绍一下属性动画在xml中的实现，文件需要存放在res/animator/文件夹下，没有的自建animator文件夹即可。其语法如下：
+
+```
+<set
+  android:ordering=["together" | "sequentially"]>
+
+    <objectAnimator
+        android:propertyName="string"
+        android:duration="int"
+        android:valueFrom="float | int | color"
+        android:valueTo="float | int | color"
+        android:startOffset="int"
+        android:repeatCount="int"
+        android:repeatMode=["repeat" | "reverse"]
+        android:valueType=["intType" | "floatType"]/>
+    
+    <animator
+        android:duration="int"
+        android:valueFrom="float | int | color"
+        android:valueTo="float | int | color"
+        android:startOffset="int"
+        android:repeatCount="int"
+        android:repeatMode=["repeat" | "reverse"]
+        android:valueType=["intType" | "floatType"]/>
+    
+    <set>
+        ...
+    </set>
+
+</set>
+```
+
+  其中AnimatorSet对应<set>标签，ObjectAnimator对应<objectAnimator>标签，ValueAnimator则对应<animator>标签，从语法可以看出<set>标签的android:ordering属性有两种取值，分别为together和sequentially，together表示动画集合中的子动画同时播放，together为默认值，而sequentially则表示子动画顺序播放。接着我们来继续说明一下<animator>标签和<objectAnimator>标签的属性及其的含义。
+
+属性	属性值及其含义
+android:propertyName	属性名称，例如一个view对象的”alpha”和”backgroundColor”。
+android:valueFrom	变化开始值
+android:valueTo	变化结束值
+android:valueType	变化值类型即android:propertyName所指定属性的类型，有intType和floatType可选， 如果android:propertyName所指定属性表示颜色的话，则不需要指定android:valueType的值， 系统会自动对颜色类型的属性进行处理
+android:duration	动画持续时间
+android:startOffset	动画开始延迟的时间，也就是动画多久后才开始播放
+android:repeatCount	重复次数，-1表示无限重复
+android:repeatMode	重复模式，前提是android:repeatCount有值，它有两种值：”reverse”和”repeat”， 第一个表示反向重复，第二个为顺序重复。
+  <animator>标签和<objectAnimator>标签相比，<animator>标签只少了一个 android:propertyName属性，其他基本一样。下面我们简单来实现一个案例：
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:ordering="together"
+    >
+    <objectAnimator
+        android:propertyName="scaleX"
+        android:duration="5000"
+        android:valueFrom="0.5"
+        android:valueTo="1"
+        android:valueType="floatType"
+        />
+
+    <objectAnimator
+        android:propertyName="scaleY"
+        android:duration="5000"
+        android:valueFrom="0.5"
+        android:valueTo="1"
+        android:valueType="floatType"
+        />
+    
+    <objectAnimator android:duration="5000"
+        android:propertyName="alpha"
+        android:valueFrom="0.5"
+        android:valueTo="1"
+        android:valueType="floatType" />
+    
+    <objectAnimator android:duration="5000"
+        android:propertyName="backgroundColor"
+        android:valueFrom="@color/green"
+        android:valueTo="@color/colorAccent" />
+
+</set>
+```
+
+  我们让一个button按钮的ScaleX和ScaleY属性从0.5变化到1，透明属性alpha也是从0.5变化到1，接着其背景颜色我们从绿色渐变到粉红色，三个动画效果同时执行，代码中添加该动画属性如下：
+
+```
+AnimatorSet  set= (AnimatorSet) AnimatorInflater.loadAnimator(this,R.animator.btn_anim);
+set.setTarget(btn);
+set.start()
+```
+
+效果如下：
+
+  到此属性动画的xml使用方式就介绍完了，但在实际开发中还是比较建议使用代码来实现属性动画，因为代码实现比xml实现简单，同时有时候我们根本无法知道一个属性的初始化值或者结束值，因为android手机千姿百态，屏幕适配各不相同，我们必须采用动态计算的方式来获取属性的值，才能最终确定要执行属性动画的控件的属性值。
+
+4. 属性动画的监听器
+  关于属性动画的监听器我们前面也了解了不少，这里我们来重新认识下它们。属性动画提供了两个用于监听动画播放过程的监听器，它们是AnimatorUpdateListener和AnimatorListener（通用的动画监听器）。其中AnimatorUpdateListener定义如下：
+
+```
+public static interface AnimatorUpdateListener {
+        /**
+         * <p>Notifies the occurrence of another frame of the animation.</p>
+         *
+         * @param animation The animation which was repeated.
+         */
+        void onAnimationUpdate(ValueAnimator animation);
+    }
+```
+
+
+  AnimatorUpdateListener只有一个onAnimationUpdate的方法，这个监听器会监听动画的整个过程，由于动画是由许多帧组成的，没播放一帧，onAnimationUpdate方法就会被回调一次，因此我们可以利用这个特性实现一些特殊的效果。
+  AnimatorListener定义如下：
+
+public static interface AnimatorListener {
+
+        void onAnimationStart(Animator animation);
+    
+        void onAnimationEnd(Animator animation);
+    
+        void onAnimationCancel(Animator animation);
+    
+        void onAnimationRepeat(Animator animation);
+    }
+
+从代码看出AnimatorListener可以监听动画的开始，结束，取消，重复播放。谷歌官方考虑到有时我们并不想同时实现这4是个方法，于是官方提供了更好的解决方案，AnmitorListenerAdapter类，它是AnimatorListener的适配器，这样的话我们也就不用同时实现4个方法了，而是可以有选择地实现我们需要的方法。案例就不写了，比较简单，前面也有涉及到，好~，到此监听器也说完了，感觉这篇已经写了挺长了，好吧，到此先告一段落，剩余下篇再聊，主要是时间插值器（TimeInterpolator）和类型估算器（TypeEvaluator）。
+
+走进绚烂多彩的属性动画-Property Animation（上篇）
+走进绚烂多彩的属性动画-Property Animation之Interpolator和TypeEvaluator（下篇）
+属性动画-Property Animation之ViewPropertyAnimator 你应该知道的一切
+Android布局动画之animateLayoutChanges与LayoutTransition
+
+
+主要参考资料
+http://developers.android.com
+http://blog.csdn.net/guolin_blog/article/details/43536355
+《android开发艺术探索》

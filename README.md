@@ -18,5 +18,10 @@ Androidkobe / upload-image-note-learnmore
 
 Branch:master
 
-Token : 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
+Token : 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
 
+
+
+//相对路径使用
+
+偏好设置 - >存放在固定文件夹下，并且下选择优先使用相对路径

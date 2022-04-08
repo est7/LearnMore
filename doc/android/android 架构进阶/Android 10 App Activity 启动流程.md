@@ -61,6 +61,20 @@ startActivity
     }
 ```
 
+//activity task manager 单例获取 AMS binder 对象
+
+```
+@UnsupportedAppUsage(trackingBug = 129726065)
+private static final Singleton<IActivityTaskManager> IActivityTaskManagerSingleton =
+        new Singleton<IActivityTaskManager>() {
+            @Override
+            protected IActivityTaskManager create() {
+                final IBinder b = ServiceManager.getService(Context.ACTIVITY_TASK_SERVICE);
+                return IActivityTaskManager.Stub.asInterface(b);
+            }
+        };
+```
+
 ```java
  @UnsupportedAppUsage
     public ActivityResult execStartActivity(
@@ -533,7 +547,7 @@ binder通信ActivityTashManagerService start Activity
             int userId, TaskRecord inTask, String reason,
             boolean allowPendingRemoteAnimationRegistryLookup,
             PendingIntentRecord originatingPendingIntent, boolean allowBackgroundActivityStart) {
-            //系统开屏在这个进行的拦截操作
+            //
       			...
                              final ActivityRecord[] outRecord = new ActivityRecord[1];
             int res = startActivity(caller, intent, ephemeralIntent, resolvedType, aInfo, rInfo,

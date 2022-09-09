@@ -71,6 +71,26 @@ data class Person1(var name: String, val age: Int) {
 4.1、定义
 为了定义常量所存在的。
 
+const 只能 与 伴生 对象 连用
+
+伴生对象 中 属性被const 修饰后会创建静态的getset 当前属性
+
+没有被修饰的：
+
+![image-20220428113046160](../../../../art/image-20220428113046160.png)
+
+![image-20220428113029906](../../../../art/image-20220428113029906.png)
+
+修饰后的：
+
+![image-20220428113154473](../../../../art/image-20220428113154473.png)
+
+![image-20220428113137552](../../../../art/image-20220428113137552.png)
+
+
+
+
+
 4.2、限制条件
 const只能修饰val的变量
 const只能修饰object的属性，或者 top-level的属性（这里的top-level就是只能定义在kotlin文件的中，不能定义在class中）
